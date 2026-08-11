@@ -70,8 +70,8 @@ const questionFor: Record<string, string> = {
 };
 
 export function nextQuestion(state: PlanState): string {
-  return questionFor[state.blockers[0]] ?? "What would you like to change or explore next?";
   if (!state.blockers.length) return "I have enough to build your first option. Would you like me to put it together?";
+  return questionFor[state.blockers[0]] ?? "What would you like to change or explore next?";
 }
 
 export function fallbackReply(state: PlanState, acceptedCount: number): string {

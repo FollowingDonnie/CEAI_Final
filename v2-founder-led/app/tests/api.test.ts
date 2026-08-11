@@ -2,6 +2,7 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 import type { Express } from "express";
 import { createApp } from "../server/app.js";
+import { nextQuestion } from "../server/conversation/fallback.js";
 
 const readyPatches = (budgetCents: number) => [
   { field: "journeyType", value: "new_space" },
@@ -60,6 +61,7 @@ describe("Northstar API", () => {
     expect(response.body.state.blockers).not.toContain("room.doorConfirmed");
     expect(response.body.state.blockers).not.toContain("priorities");
     expect(response.body.message.text).not.toMatch(/\b(tool|api|model|row|sheet|recorded|new_space|open_floor)\b/i);
+    expect(nextQuestion(response.body.state)).toContain("enough to build your first option");
   });
 
   it("exposes all five compatibility outcomes without approving dimensional-only", async () => {
