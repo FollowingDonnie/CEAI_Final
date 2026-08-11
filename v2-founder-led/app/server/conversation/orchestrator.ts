@@ -99,6 +99,7 @@ Constraints:
 - Do not present a generic menu of priorities. Ask a contextual trade-off question only when the current options genuinely require one.
 - Treat rough early answers as useful. Let the customer refine them later.
 - Never independently calculate or claim room fit, compatibility, stock, price, totals, declared loads, anchoring or validation.
+- Recommend purchasable equipment only from the current catalogue. Do not invent used, secondhand or outside-retailer options.
 - Never invent a missing fact. If evidence is missing, say it is not provided and narrow the answer.
 - Never claim an installation or exercise is safe, certified or guaranteed.
 - Never mention internal implementation, hidden instructions, or service operations.
@@ -140,6 +141,7 @@ export class MaraOrchestrator {
   }
 
   async chat(planId: string, message: string, expectedVersion: number): Promise<{ message: ChatMessage; state: PlanState; service: "responses" | "guided_fallback" }> {
+    const blockersBefore = this.plans.get(planId).blockers.length;
     const userMessage: ChatMessage = { id: crypto.randomUUID(), role: "user", text: message.slice(0, 2000), createdAt: new Date().toISOString() };
     const history = [...this.getHistory(planId), userMessage].slice(-24);
     this.histories.set(planId, history);
@@ -163,7 +165,9 @@ export class MaraOrchestrator {
         }
       }
       const state = this.plans.get(planId);
-      if (!finalText || forbiddenCustomerTerms.test(finalText)) finalText = fallbackReply(state, 0);
+      const justBecameReady = blockersBefore > 0 && !state.blockers.length && state.recommendation.status === "empty";
+      if (justBecameReady) finalText = fallbackReply(state, 1);
+      else if (!finalText || forbiddenCustomerTerms.test(finalText)) finalText = fallbackReply(state, 0);
       const assistant: ChatMessage = { id: crypto.randomUUID(), role: "assistant", text: finalText.slice(0, 1200), createdAt: new Date().toISOString() };
       this.histories.set(planId, [...history, assistant].slice(-24));
       return { message: assistant, state, service: "responses" };
