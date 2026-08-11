@@ -49,3 +49,21 @@ test("source failure returns 503 and no result payload", async () => {
     assert.equal("results" in data, false);
   });
 });
+
+
+test("CORS preflight permits the deployed frontend request headers", async () => {
+  await withServer({ registryUrl: "https://sheet.example.invalid/registry.csv", openAiKey: "" }, async (base) => {
+    const response = await fetch(base + "/api/options", {
+      method: "OPTIONS",
+      headers: {
+        Origin: "http://localhost:5173",
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": "content-type, cache-control"
+      }
+    });
+    assert.equal(response.status, 204);
+    assert.equal(response.headers.get("access-control-allow-origin"), "http://localhost:5173");
+    assert.match(response.headers.get("access-control-allow-headers"), /content-type/i);
+    assert.match(response.headers.get("access-control-allow-headers"), /cache-control/i);
+  });
+});

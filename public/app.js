@@ -306,7 +306,7 @@ async function askGuide(question) {
 async function api(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
     method: options.method || "GET",
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-cache, no-store" },
+    headers: options.body ? { "Content-Type": "application/json" } : {},
     cache: "no-store",
     body: options.body ? JSON.stringify(options.body) : undefined
   });
