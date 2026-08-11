@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Fictional demonstration of a governed same-brand rack upgrade decision.">
+  <title>Northstar Rack Upgrade Advisor</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to advisor</a>
+  <header class="site-header no-print">
+    <div class="header-inner">
+      <a class="brand" href="./" aria-label="Northstar Demonstration Equipment home">
+        <span class="brand-mark" aria-hidden="true">N</span>
+        <span><strong>Northstar</strong><small>Demonstration Equipment</small></span>
+      </a>
+      <span class="demo-label">Fictional product data</span>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="intro no-print" aria-labelledby="page-title">
+      <p class="eyebrow">Same-brand upgrade check</p>
+      <h1 id="page-title">Rack Upgrade Advisor</h1>
+      <p>Choose your exact Northstar demonstration rack to see recorded compatibility, conditions, and evidence before considering an attachment.</p>
+    </section>
+
+    <nav class="steps no-print" aria-label="Advisor progress">
+      <ol>
+        <li data-step-indicator="1" aria-current="step"><span>1</span>Your rack</li>
+        <li data-step-indicator="2"><span>2</span>Upgrade type</li>
+        <li data-step-indicator="3"><span>3</span>Decision sheet</li>
+      </ol>
+    </nav>
+
+    <div id="liveStatus" class="sr-only" aria-live="polite"></div>
+    <section id="dataStatus" class="data-status no-print" aria-live="polite">
+      <span class="status-dot" aria-hidden="true"></span>
+      <div><strong>Checking live compatibility registry</strong><span>Please wait.</span></div>
+    </section>
+
+    <section id="rackStep" class="task-section no-print" aria-labelledby="rack-heading">
+      <div class="section-heading">
+        <div><p class="step-kicker">Step 1</p><h2 id="rack-heading">Identify your rack</h2></div>
+        <button class="text-button" type="button" data-guide-question="Why do I need the exact rack version?">Explain this</button>
+      </div>
+      <form id="rackForm">
+        <div class="form-grid">
+          <label>Rack family<select id="familySelect" required disabled><option value="">Select family</option></select></label>
+          <label>Exact model / version<select id="rackSelect" required disabled><option value="">Select exact version</option></select></label>
+          <label>Height variant<select id="heightSelect" required disabled><option value="">Select exact rack first</option></select></label>
+        </div>
+        <div id="configurationFields" class="form-grid"></div>
+        <details id="identityHelp" class="identity-help">
+          <summary>Identification clues</summary>
+          <div id="identityClues"><p>Select an exact version to see registry-authored clues.</p></div>
+        </details>
+        <div class="form-actions">
+          <button id="unresolvedButton" class="secondary-button" type="button">I cannot find my rack</button>
+          <button id="rackContinue" class="primary-button" type="submit" disabled>Continue</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="categoryStep" class="task-section no-print" aria-labelledby="category-heading" hidden>
+      <div class="section-heading"><div><p class="step-kicker">Step 2</p><h2 id="category-heading">Choose an upgrade type</h2></div></div>
+      <div id="rackSummary" class="rack-summary"></div>
+      <form id="categoryForm">
+        <fieldset><legend>Attachments to show</legend><div id="categoryOptions" class="segmented"></div></fieldset>
+        <div class="form-actions"><button id="backToRack" class="secondary-button" type="button">Back</button><button class="primary-button" type="submit">Create decision sheet</button></div>
+      </form>
+    </section>
+
+    <section id="decisionArea" class="decision-area" aria-labelledby="sheet-heading" hidden></section>
+  </main>
+
+  <aside id="guidePanel" class="guide-panel no-print" aria-labelledby="guide-heading" hidden>
+    <div class="guide-header"><div><p class="eyebrow">Bounded AI explanation</p><h2 id="guide-heading">Decision Guide</h2></div><button id="closeGuide" class="icon-button" type="button" aria-label="Close Decision Guide">&times;</button></div>
+    <p id="guideContext">Ask about the current structured selection or Decision Sheet.</p>
+    <div id="guideSuggestions" class="suggestions"></div>
+    <form id="guideForm"><label for="guideQuestion">One short question</label><div class="question-row"><input id="guideQuestion" maxlength="300" autocomplete="off"><button class="primary-button" type="submit">Ask</button></div></form>
+    <div id="guideAnswer" class="guide-answer" aria-live="polite"></div>
+  </aside>
+  <div id="panelBackdrop" class="backdrop no-print" hidden></div>
+</body>
+</html>

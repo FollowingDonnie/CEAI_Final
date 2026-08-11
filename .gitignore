@@ -1,0 +1,18 @@
+.env
+node_modules/
+coverage/
+.qa-*.png
+*.log
+
+# Local coursework source documents and inspection helpers
+H9CEAI_Final_Project_Agentic-Organisation_2026.docx
+H9CEAI_Final_Project_Agentic-Organisation_2026.pdf
+inspect_brief.py
+research-inputs/*.docx
+.brief-render/
+.lo-profile-brief/
+
+# Google Sheets import and visual-QA build artefacts
+registry-template/*.xlsx
+registry-template/*-preview.png
+registry-template/*.inspect.ndjson
