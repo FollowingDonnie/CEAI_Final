@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: northstar-space-planner-v2-api
+    runtime: node
+    plan: free
+    rootDir: v2-founder-led/app
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: GOOGLE_SHEET_ID
+        value: 1EmSjTdmZ92lO16hB0_WN7pZOgDhXg2BYUwDTXpNl2sY
+      - key: CATALOGUE_REFRESH_SECONDS
+        value: 60
+      - key: CATALOGUE_MAX_STALE_MINUTES
+        value: 30
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-5-mini
+      - key: APP_ORIGIN
+        value: https://followingdonnie.github.io,http://localhost:5173

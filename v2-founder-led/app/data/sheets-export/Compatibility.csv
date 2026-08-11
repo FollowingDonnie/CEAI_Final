@@ -1,0 +1,15 @@
+relationship_id,host_variant_id,attachment_variant_id,state,adapter_variant_id,conditions,failed_reason_codes,evidence_ids,reviewed_at,policy_version,active
+rel-h30-dip,h30-half-rack-entry,a10-dip-attachment,explicitly_compatible,,[],[],"[""evidence-rel-h30-dip""]",2026-08-11T12:00:00.000Z,compat-2026-08,TRUE
+rel-h40-dip,h40-half-rack-pro,a10-dip-attachment,explicitly_compatible,,[],[],"[""evidence-rel-h40-dip""]",2026-08-11T12:00:00.000Z,compat-2026-08,TRUE
+rel-h30-cable,h30-half-rack-entry,a20-cable-compact,compatible_with_condition,a28-stabiliser,"[""Add the A28 rear stabiliser""]",[],"[""evidence-rel-h30-cable""]",2026-08-11T12:00:00.000Z,compat-2026-08,TRUE
+rel-h40-cable,h40-half-rack-pro,a20-cable-compact,explicitly_compatible,,[],[],"[""evidence-rel-h40-cable""]",2026-08-11T12:00:00.000Z,compat-2026-08,TRUE
+rel-p40-dip,p40-power-rack-compact,a10-dip-attachment,explicitly_compatible,,[],[],"[""evidence-rel-p40-dip""]",2026-08-11T12:00:00.000Z,compat-2026-08,TRUE
+rel-p50-dip,p50-power-rack-standard,a10-dip-attachment,explicitly_compatible,,[],[],"[""evidence-rel-p50-dip""]",2026-08-11T12:00:00.000Z,compat-2026-08,TRUE
+rel-p50-jammer,p50-power-rack-standard,a24-jammer-arms,explicitly_compatible,,[],[],"[""evidence-rel-p50-jammer""]",2026-08-11T12:00:00.000Z,compat-2026-08,TRUE
+rel-p60-cable-g2,p60-power-rack-premium,a20-cable-compact,incompatible,,[],"[""GENERATION_MISMATCH"",""CROSSMEMBER_CONFLICT""]","[""evidence-rel-p60-cable-g2""]",2026-08-11T12:00:00.000Z,compat-2026-08,TRUE
+rel-p60-cable-g3,p60-power-rack-premium,a22-cable-pro,explicitly_compatible,,[],[],"[""evidence-rel-p60-cable-g3""]",2026-08-11T12:00:00.000Z,compat-2026-08,TRUE
+rel-s10-straps,s10-squat-stand-entry,a14-safety-straps,dimensionally_matching_but_unapproved,,[],"[""RELATION_NOT_APPROVED""]","[""evidence-rel-s10-straps""]",2026-08-11T12:00:00.000Z,compat-2026-08,TRUE
+rel-f20-storage,f20-folding-rack-compact,a18-plate-storage,incompatible,,[],"[""BASE_CONFLICT"",""UPRIGHT_FACE_OBSTRUCTED""]","[""evidence-rel-f20-storage""]",2026-08-11T12:00:00.000Z,compat-2026-08,TRUE
+rel-s20-dip-adapter,s20-squat-stand-standard,a10-dip-attachment,compatible_with_condition,a30-interface-adapter,"[""Use the A30 governed interface adapter""]",[],"[""evidence-rel-s20-dip-adapter""]",2026-08-11T12:00:00.000Z,compat-2026-08,TRUE
+rel-h30-jammer-depth,h30-half-rack-entry,a24-jammer-arms,incompatible,,[],"[""DEPTH_INSUFFICIENT""]","[""evidence-rel-h30-jammer-depth""]",2026-08-11T12:00:00.000Z,compat-2026-08,TRUE
+rel-p40-pullup,p40-power-rack-compact,a26-pullup-multi,explicitly_compatible,,[],[],"[""evidence-rel-p40-pullup""]",2026-08-11T12:00:00.000Z,compat-2026-08,TRUE

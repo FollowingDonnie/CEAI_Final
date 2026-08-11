@@ -1,0 +1,41 @@
+variant_id,product_id,sku,configuration,anchoring_mode,generation,declared_load_kg,declared_load_type,steel_gauge_mm,priority_weight,evidence_status,active
+s10-squat-stand-entry,s10-squat-stand,NS-S10,Entry open stand,none,,250,rack load,2,6,verified,TRUE
+s20-squat-stand-standard,s20-squat-stand,NS-S20,Braced open stand,none,,320,rack load,2.3,6,verified,TRUE
+h30-half-rack-entry,h30-half-rack,NS-H30-G2,G2 compact half rack,none,G2,400,rack load,2.5,9,verified,TRUE
+h40-half-rack-pro,h40-half-rack,NS-H40-G2,G2 deep half rack,none,G2,500,rack load,3,8,verified,TRUE
+p40-power-rack-compact,p40-power-rack,NS-P40-G2,G2 shallow four-post,none,G2,500,rack load,2.5,8,verified,TRUE
+p50-power-rack-standard,p50-power-rack,NS-P50-G2,G2 standard four-post,none,G2,600,rack load,3,9,verified,TRUE
+p60-power-rack-premium,p60-power-rack,NS-P60-G3,G3 six-post,none,G3,750,rack load,3,7,verified,TRUE
+f20-folding-rack-compact,f20-folding-rack,NS-F20-G2,G2 wall folding,wall_required,G2,300,rack load,2.5,7,verified,TRUE
+f30-folding-rack-pro,f30-folding-rack,NS-F30-G2,G2 deep folding,wall_required,G2,350,rack load,3,6,verified,TRUE
+a10-dip-attachment,a10-dip-attachment,NS-A10-G2,G2 side-mount,none,G2,,,,5,verified,TRUE
+a12-spotter-arms,a12-spotter-arms,NS-A12-G2,G2 pair,none,G2,,,,5,verified,TRUE
+a14-safety-straps,a14-safety-straps,NS-A14-G2,G2 pair,none,G2,,,,5,verified,TRUE
+a16-landmine,a16-landmine,NS-A16-UNI,Base mount,none,G2,,,,5,verified,TRUE
+a18-plate-storage,a18-plate-storage,NS-A18-G2,Side-mount pair,none,G2,,,,5,verified,TRUE
+a20-cable-compact,a20-cable,NS-A20-G2,Single pulley with loading pin,none,G2,,,,5,verified,TRUE
+a22-cable-pro,a22-cable,NS-A22-G3,G3 dual pulley,none,G3,,,,5,verified,TRUE
+a24-jammer-arms,a24-jammer-arms,NS-A24-G2,G2 pair,none,G2,,,,5,verified,TRUE
+a26-pullup-multi,a26-pullup-multi,NS-A26-G2,G2 crossmember,none,G2,,,,5,verified,TRUE
+a28-stabiliser,a28-stabiliser,NS-A28-G2,G2 rear brace,none,G2,,,,5,verified,TRUE
+a30-interface-adapter,a30-interface-adapter,NS-A30-60-75,60-to-75 mm governed adapter,none,G2,,,,5,verified,TRUE
+b10-flat-bench-entry,b10-flat-bench,NS-B10,Flat,none,,300,combined user and load,,7,verified,TRUE
+b20-adjustable-bench-standard,b20-adjustable-bench,NS-B20,Seven-position adjustable,none,,320,combined user and load,,9,verified,TRUE
+b30-adjustable-bench-premium,b30-adjustable-bench,NS-B30,Heavy adjustable,none,,450,combined user and load,,7,verified,TRUE
+c10-rower-standard,c10-rower,NS-C10,Air resistance,none,,,,,8,verified,TRUE
+c20-bike-compact,c20-bike,NS-C20,Magnetic upright,none,,,,,9,verified,TRUE
+c30-stepper-compact,c30-stepper,NS-C30,Folding magnetic,none,,,,,6,verified,TRUE
+w10-barbell-general,w10-barbell-general,NS-W10,20 kg general training,none,,450,declared bar rating,,9,verified,TRUE
+w20-barbell-power,w20-barbell-power,NS-W20,20 kg power training,none,,650,declared bar rating,,7,verified,TRUE
+p100-plate-pack-starter,p100-plate-pack,NS-PL100,Starter bumper set,none,,,,,9,verified,TRUE
+p150-plate-pack-standard,p150-plate-pack,NS-PL150,Standard bumper set,none,,,,,7,verified,TRUE
+p200-plate-pack-heavy,p200-plate-pack,NS-PL200,Heavy bumper set,none,,,,,6,verified,TRUE
+d10-adjustable-dumbbells,d10-adjustable-dumbbells,NS-D10,2-32 kg pair,none,,,,,9,verified,TRUE
+d20-fixed-dumbbell-set,d20-fixed-dumbbell-set,NS-D20,2.5-25 kg pairs with rack,none,,,,,6,verified,TRUE
+k10-kettlebell-set,k10-kettlebell-set,NS-K10,8-24 kg set,none,,,,,7,verified,TRUE
+x10-band-kit,x10-band-kit,NS-X10,Five-band kit,none,,,,,8,verified,TRUE
+m10-training-mat,m10-training-mat,NS-M10,1.8 m exercise mat,none,,,,,7,verified,TRUE
+f10-flooring-general,f10-flooring-general,NS-FL10,"10 mm, 6 square metres",none,,,,,8,assumption,TRUE
+f20-flooring-impact,f20-flooring-impact,NS-FL20,"20 mm, 6 square metres",none,,,,,7,assumption,TRUE
+st10-storage-vertical,st10-storage-vertical,NS-ST10,Vertical accessory tree,none,,,,,8,verified,TRUE
+st20-storage-horizontal,st20-storage-horizontal,NS-ST20,Two-tier shelf,none,,,,,6,verified,TRUE

@@ -1,0 +1,9 @@
+list_name,allowed_value,schema_version,active
+category,rack,catalogue-2.0,TRUE
+category,attachment,catalogue-2.0,TRUE
+category,bench,catalogue-2.0,TRUE
+compatibility_state,explicitly_compatible,catalogue-2.0,TRUE
+compatibility_state,compatible_with_condition,catalogue-2.0,TRUE
+compatibility_state,dimensionally_matching_but_unapproved,catalogue-2.0,TRUE
+compatibility_state,incompatible,catalogue-2.0,TRUE
+compatibility_state,insufficient_information,catalogue-2.0,TRUE

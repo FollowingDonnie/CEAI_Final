@@ -25,6 +25,23 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure Pages
         uses: actions/configure-pages@v5
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: v2-founder-led/app/package-lock.json
+      - name: Build Northstar v2
+        working-directory: v2-founder-led/app
+        env:
+          VITE_API_BASE_URL: https://northstar-space-planner-v2-api.onrender.com
+          VITE_BASE_PATH: /CEAI_Final/v2/
+        run: npm ci && npm run build
+      - name: Add v2 to Pages artifact
+        run: |
+          rm -rf public/v2
+          mkdir -p public/v2
+          cp -R v2-founder-led/app/dist/. public/v2/
       - name: Upload static frontend
         uses: actions/upload-pages-artifact@v3
         with:
