@@ -3,7 +3,7 @@
 **Stage:** 3 - Build  
 **Input implemented:** `handoffs/02-solution-design.md`  
 **Product:** Northstar Rack Upgrade Advisor  
-**Posture:** Working deployable prototype with corrected live Google Sheet integration verified; no deployment performed.
+**Posture:** Public prototype deployed and verified; Maker evidence ready for Purple Manager Build gate review.
 
 ## 1. What was built
 
@@ -27,7 +27,7 @@ The stack is dependency-free Node.js 20 plus semantic HTML, CSS, and browser Jav
 4. The deterministic engine resolves one exact active rack, validates declared configuration, evaluates every attachment, lowers unsafe records to unknown, joins commerce separately, derives readiness, and gates product handoffs.
 5. The Decision Guide performs a fresh registry read before any answer. For allowed questions, the Responses API is given one strict, read-only `read_live_registry` function tool whose output is the minimum validated context. The second response uses a strict JSON schema.
 6. The backend verifies every AI record reference, source reference, action, URL, and prohibited confidence phrase. Invalid output is discarded. AI has no mutation route to registry records, status, condition answers, commerce, readiness, or purchase gating.
-7. API responses use `no-store`; CORS is restricted by `ALLOWED_ORIGINS`. `GET /api/health` reports configuration without fetching or exposing secrets.
+7. API responses use no-store; CORS is restricted by ALLOWED_ORIGINS. Preflight permits Content-Type and Cache-Control defensively, while the frontend sends Content-Type only for requests with bodies. GET /api/health reports configuration without exposing secrets.
 
 ## 3. Files created or changed
 
@@ -77,13 +77,19 @@ Open http://localhost:5173. The backend reads the corrected public CSV endpoint 
 
 Final command: npm test
 
-Result on 11 August 2026: **18 tests passed, 0 failed** using Node v24.16.0 and the built-in Node test runner. The original 15 engine, Guide, source-failure, cache-bypass, and endpoint tests remain green. Three focused live-source contract regressions now additionally prove:
+Final deployment result: **19 tests passed, 0 failed**. The original 18 engine, Guide, live-source contract, failure, cache-bypass, and endpoint tests remain green. The added CORS regression proves that an OPTIONS preflight from the deployed frontend origin permits the request headers used by the application.
 
-- both commerce rows map exact attachment, price, currency, stock, source, and update fields while adjacent non-commerce columns remain empty;
-- all three definitions map exact IDs, labels, and text through the options response while adjacent commerce columns remain empty;
-- source, verification, review, and commerce dates remain ISO text and are not spreadsheet serial numbers.
+Public Playwright verification passed at desktop width 1440 and mobile width 390. Both rendered eight results and all four evidence states with no console errors, page errors, or horizontal overflow. The real Decision Guide returned a customer-facing answer. Its customer-language guard rejected internal field names, record IDs, and machine states; the visible answer contained none of those internal terms.
 
-Supplied Playwright verification passed at desktop width 1440 and mobile width 390. Both rendered eight results and all four evidence states with no console errors or horizontal overflow. Evidence is stored in evidence/ui-desktop.png, evidence/ui-desktop-viewport.jpg, evidence/ui-mobile.png, and evidence/ui-mobile-viewport.jpg.
+Public evidence:
+
+- evidence/live-desktop-guide.png
+- evidence/live-mobile.png
+- evidence/live-diagnostic.png
+- evidence/ui-desktop.png
+- evidence/ui-desktop-viewport.jpg
+- evidence/ui-mobile.png
+- evidence/ui-mobile-viewport.jpg
 ## 7. Live-data verification procedure and result
 
 The controlled registry is live at:
@@ -96,26 +102,24 @@ A fresh no-cache request returned HTTP 200 after repair. Live options and decisi
 Integration incident: the initial Sheet import shifted both commerce rows one column right and all three definition rows one column left. Google Sheets also coerced ISO date cells into serials. The five rows were realigned and date cells rewritten as plain text. The incident, impact, repair, and prevention are recorded in evidence/problem-log.md.
 ## 8. Deployment procedure and URL
 
-No deployment was approved or performed, so there is no public URL.
+The approved public prototype is deployed:
 
-After approval:
+- Frontend: https://followingdonnie.github.io/CEAI_Final/
+- Backend: https://northstar-rack-advisor-api.onrender.com
+- Repository: https://github.com/FollowingDonnie/CEAI_Final
 
-1. Deploy this directory as a Render Node service using `render.yaml`.
-2. Configure the runtime variables from section 4.
-3. Publish `public/` through GitHub Pages and point `public/config.js` to the Render URL.
-4. Add the Pages origin to `ALLOWED_ORIGINS`.
-5. Run the demonstration sequence in section 10 against the published Sheet, then record the public URLs and timestamps.
-
+The GitHub Pages frontend calls the Render backend, which retrieves the controlled Google Sheet CSV at request time. Public desktop and mobile runs verified the deterministic flow and bounded Decision Guide after the CORS repair. This follow-up documents the completed deployment; it did not change product code or perform another deployment.
 ## 9. Known limitations, risks, and deferred work
 
-- The live Google Sheet boundary, deterministic options/decision flow, and responsive UI are verified. Generated Decision Guide output was not exercised in this follow-up; its unavailable and validation paths remain covered by automated tests.
-- The provided evidence and product URLs use reserved .invalid domains because every record is fictional. Replace them only with authorized exact-record destinations in a partner deployment.
+- The public Google Sheet boundary, deterministic options/decision flow, responsive UI, and real Decision Guide answer are verified.
+- The provided evidence and product URLs use reserved .invalid domains because every product record is fictional. They are not real purchase destinations.
 - Commerce is illustrative and considered current for seven days; this window is an implementation setting, not compatibility evidence.
 - No registry administration UI exists. CSV governance remains a controlled owner process as approved.
-- Google Sheets can shift sparse CSV rows or coerce ISO values during import. The new source-contract tests and plain-text date requirement reduce this risk but do not replace registry-owner review.
-- The strict response validator can reject suspicious AI output but cannot mathematically prove every natural-language paraphrase. The small supplied context, fixed schema, source/reference allowlists, prohibited-language checks, and fail-closed UI reduce this risk.
+- Google Sheets can shift sparse CSV rows or coerce ISO values during import. Source-contract tests and the plain-text date requirement reduce this risk but do not replace registry-owner review.
+- Cross-origin request headers must remain synchronized with the backend preflight allowlist. The deployed frontend now omits unnecessary Cache-Control and sends Content-Type only with bodies; the backend permits both headers defensively, and a regression test covers the deployed preflight shape.
+- The customer-language guard rejects internal field names, record IDs, and machine-state labels, but customer-visible Guide language should remain part of future browser regression review.
 
-**Current gate status:** Stage 3 Maker evidence is refreshed and ready for Purple Manager review. The Maker does not self-pass the Build gate. No deployment was performed or approved.
+**Current gate status:** Maker deployment evidence is complete and ready for Purple Manager Build gate review. The Maker does not self-pass the Build gate.
 ## 10. Communicator handoff
 
 ### Verified capabilities
@@ -128,6 +132,8 @@ After approval:
 - Registry failure suppresses current claims; AI failure leaves the deterministic sheet unchanged.
 - Compatibility and commerce dates are separate.
 - Every result is traceable to a governed relationship or a named degradation rule.
+- The public GitHub Pages frontend and Render backend complete the live flow across origins.
+- The real Guide answer passed the customer-language guard without exposing internal field names, record IDs, or machine states.
 
 ### Customer-visible limitations
 
@@ -143,15 +149,13 @@ Do not claim that the prototype proves real product compatibility, safety, retai
 
 ### Reproducible demonstration steps
 
-1. Import and publish the supplied registry CSV, configure the backend, and open the advisor.
+1. Open https://followingdonnie.github.io/CEAI_Final/.
 2. Select Atlas, Atlas Modular Rack V2, 220 cm, and a structured stabilisation value.
-3. Show all upgrades and point out manufacturer-confirmed, condition-dependent, known incompatible, and unknown groups.
-4. Set both Cable Tower conditions to `met`; show readiness and product handoff change while the evidence state remains condition-dependent.
+3. Show all upgrades and point out eight results across manufacturer-confirmed, condition-dependent, known incompatible, and unknown groups.
+4. Set both Cable Tower conditions to met; show readiness and product handoff change while the evidence state remains condition-dependent.
 5. Edit the rack to Atlas V1; show different outcomes and the visible revision note.
 6. Open evidence details and distinguish source date, compatibility check, review due date, and commerce update.
-7. Show the deliberate stale Plate Storage, contradictory Jammer Arms, malformed Storage Shelf, and cross-brand Rival records degrading to unknown.
-8. Ask why Cable Tower is condition-dependent; show the fresh registry check time and unchanged deterministic status.
-9. Ask for cross-brand fit; show the scope refusal.
-10. Remove the AI key to show Guide unavailability without changing the sheet; make the registry unavailable to show complete fail-closed behavior and Retry.
-11. Print/save the Decision Sheet and confirm identity, states, conditions, provenance, assessment time, and scope note are present.
-
+7. Ask why Cable Tower is condition-dependent; show the real customer-facing Guide answer and unchanged deterministic status.
+8. Ask for cross-brand fit; show the scope refusal.
+9. Confirm the browser console has no CORS or page errors and the page has no horizontal overflow at desktop and mobile widths.
+10. Print/save the Decision Sheet and confirm identity, states, conditions, provenance, assessment time, and scope note are present.
