@@ -21,10 +21,8 @@ export function getBlockers(state: PlanState): string[] {
   if (state.requirements.room.widthMm.value === null) blockers.push("room.widthMm");
   if (state.requirements.room.lengthMm.value === null) blockers.push("room.lengthMm");
   if (state.requirements.room.heightMm.value === null) blockers.push("room.heightMm");
-  if (state.requirements.room.doorConfirmed.value === null) blockers.push("room.doorConfirmed");
   if (!state.requirements.goals.value?.length) blockers.push("goals");
   if (!state.requirements.experience.value) blockers.push("experience");
-  if (!state.requirements.priorities.value?.length) blockers.push("priorities");
   if (state.requirements.budgetCents.value === null) blockers.push("budgetCents");
   return blockers;
 }
@@ -51,6 +49,7 @@ export function createPlan(snapshot: CatalogueSnapshot): PlanState {
       goals: emptyField([]),
       originalGoalText: emptyField(),
       experience: emptyField(),
+      trainingDaysPerWeek: emptyField<number>(null, "days per week"),
       intendedUsers: emptyField(1, "people"),
       priorities: emptyField([]),
       budgetCents: emptyField<number>(null, "EUR cents"),
@@ -116,6 +115,7 @@ export function applyRequirementPatches(state: PlanState, patches: RequirementPa
       case "goals": next.requirements.goals = changedField(next.requirements.goals, patch.value, source); break;
       case "originalGoalText": next.requirements.originalGoalText = changedField(next.requirements.originalGoalText, patch.value, source); break;
       case "experience": next.requirements.experience = changedField(next.requirements.experience, patch.value, source); break;
+      case "trainingDaysPerWeek": next.requirements.trainingDaysPerWeek = changedField(next.requirements.trainingDaysPerWeek, Math.round(patch.value), source); break;
       case "intendedUsers": next.requirements.intendedUsers = changedField(next.requirements.intendedUsers, Math.round(patch.value), source); break;
       case "priorities": next.requirements.priorities = changedField(next.requirements.priorities, patch.value, source); break;
       case "budgetCents": next.requirements.budgetCents = changedField(next.requirements.budgetCents, Math.round(patch.value), source); break;

@@ -51,12 +51,15 @@ describe("Northstar API", () => {
   it("captures several facts in one customer message", async () => {
     const { app } = createApp({ apiKey: undefined });
     const created = await request(app).post("/api/plans").expect(201);
-    const response = await request(app).post(`/api/plans/${created.body.state.planId}/chat`).send({ expectedVersion: 0, message: "I am planning a new gym, 4 x 3 x 2.4 m, for strength with a EUR 2500 budget. I am a beginner." }).expect(200);
+    const response = await request(app).post(`/api/plans/${created.body.state.planId}/chat`).send({ expectedVersion: 0, message: "I am planning a new gym, 4 x 3 x 2.4 m, for strength with a EUR 2500 budget. I am a beginner and train 3 times a week." }).expect(200);
     expect(response.body.state.requirements.room.lengthMm.value).toBe(4000);
     expect(response.body.state.requirements.room.widthMm.value).toBe(3000);
     expect(response.body.state.requirements.budgetCents.value).toBe(250000);
     expect(response.body.state.requirements.goals.value).toContain("strength");
-    expect(response.body.message.text).not.toMatch(/\b(tool|api|model|row|sheet)\b/i);
+    expect(response.body.state.requirements.trainingDaysPerWeek.value).toBe(3);
+    expect(response.body.state.blockers).not.toContain("room.doorConfirmed");
+    expect(response.body.state.blockers).not.toContain("priorities");
+    expect(response.body.message.text).not.toMatch(/\b(tool|api|model|row|sheet|recorded|new_space|open_floor)\b/i);
   });
 
   it("exposes all five compatibility outcomes without approving dimensional-only", async () => {

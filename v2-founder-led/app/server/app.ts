@@ -30,7 +30,7 @@ const requirementPatchSchema = z.discriminatedUnion("field", [
   z.object({ field: z.enum(["goals", "priorities"]), value: z.array(z.string()).max(12) }),
   z.object({ field: z.literal("originalGoalText"), value: z.string().max(1000) }),
   z.object({ field: z.literal("experience"), value: z.enum(["beginner", "some_experience", "experienced"]) }),
-  z.object({ field: z.enum(["intendedUsers", "budgetCents"]), value: z.number().int().positive() }),
+  z.object({ field: z.enum(["trainingDaysPerWeek", "intendedUsers", "budgetCents"]), value: z.number().int().positive() }),
   z.object({ field: z.literal("mountingPermission"), value: z.boolean() }),
   z.object({ field: z.literal("noiseImpactPreference"), value: z.enum(["low", "normal", "not_sure"]) }),
 ]);

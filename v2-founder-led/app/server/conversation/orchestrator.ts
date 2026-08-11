@@ -12,7 +12,7 @@ import { searchCatalogue } from "../domain/search.js";
 import { applyRequirementPatches, type PlanStore } from "../domain/state.js";
 import { extractRequirementPatches, fallbackReply } from "./fallback.js";
 
-const forbiddenCustomerTerms = /\b(tool|api|model|database row|sheet|function call|system prompt)\b/i;
+const forbiddenCustomerTerms = /\b(tool|api|model|database row|sheet|function call|system prompt|new_space|open_floor|free_weights|remaining missing|i(?:'ve| have) recorded)\b/i;
 
 const fieldSchema = z.object({
   journey_type: z.enum(["new_space", "upgrade"]).nullable(),
@@ -22,6 +22,7 @@ const fieldSchema = z.object({
   door_details_complete: z.boolean().nullable(),
   goals: z.array(z.enum(["strength", "bodybuilding", "cardio", "calisthenics", "general_fitness"])).nullable(),
   experience: z.enum(["beginner", "some_experience", "experienced"]).nullable(),
+  training_days_per_week: z.number().int().min(1).max(7).nullable(),
   priorities: z.array(z.enum(["versatility", "open_floor", "free_weights", "cardio", "storage", "cost"])).nullable(),
   budget_cents: z.number().int().positive().nullable(),
   mounting_permission: z.boolean().nullable(),
@@ -45,9 +46,10 @@ const tools: Responses.Tool[] = [
         door_details_complete: { type: ["boolean", "null"] },
         goals: { type: ["array", "null"], items: { type: "string", enum: ["strength", "bodybuilding", "cardio", "calisthenics", "general_fitness"] } },
         experience: { type: ["string", "null"], enum: ["beginner", "some_experience", "experienced", null] },
+        training_days_per_week: { type: ["integer", "null"], minimum: 1, maximum: 7 },
         priorities: { type: ["array", "null"], items: { type: "string", enum: ["versatility", "open_floor", "free_weights", "cardio", "storage", "cost"] } },
         budget_cents: { type: ["integer", "null"] }, mounting_permission: { type: ["boolean", "null"] },
-      }, required: ["journey_type", "length_mm", "width_mm", "height_mm", "door_details_complete", "goals", "experience", "priorities", "budget_cents", "mounting_permission"], additionalProperties: false,
+      }, required: ["journey_type", "length_mm", "width_mm", "height_mm", "door_details_complete", "goals", "experience", "training_days_per_week", "priorities", "budget_cents", "mounting_permission"], additionalProperties: false,
     }, strict: true,
   },
   {
@@ -71,6 +73,10 @@ const tools: Responses.Tool[] = [
     parameters: { type: "object", properties: { seed: { type: "integer" } }, required: ["seed"], additionalProperties: false }, strict: true,
   },
   {
+    type: "function", name: "build_checked_plan", description: "Build the first deterministic recommendation, room layout and itemised quote after required customer facts are complete and the customer asks to proceed.",
+    parameters: { type: "object", properties: {}, required: [], additionalProperties: false }, strict: true,
+  },
+  {
     type: "function", name: "calculate_itemised_quote", description: "Calculate the current itemised quote in integer cents for selected items.",
     parameters: { type: "object", properties: {}, required: [], additionalProperties: false }, strict: true,
   },
@@ -80,16 +86,26 @@ const maraInstructions = `
 Role: You are Mara Quinn, Northstar equipment planner.
 Personality: Warm, calm, practical and collaborative. Sound like an experienced equipment specialist, never a pushy salesperson.
 Goal: Help the customer plan a new home gym or a validated upgrade using the current structured plan and governed results.
-Success: Capture every clearly stated fact, ask one high-information question when blocked, and explain only current validated results.
+Success: Make planning feel like a useful human consultation. Capture every clearly stated fact, respond to what it means for the customer, ask one natural high-information question, and explain only validated results.
 Constraints:
 - Use metric units and EUR. Keep normal replies to two or three short sentences.
+- Give the useful customer-facing answer first, as a capable guide would.
+- Acknowledge the meaning of an answer, not the fact that a field was stored. Never say "recorded", "remaining missing details", "blockers", or read a checklist of outstanding fields aloud.
+- Never expose internal labels such as new_space, some_experience, open_floor or free_weights. Translate them into natural phrases.
+- Ask only one relevant question at a time. Briefly explain why it matters when that is not obvious.
+- Do not repeat the whole room, goal and budget after every turn. Summarise only when it helps a decision or confirms an unusual value.
+- Remember useful context such as training frequency and use it when shaping the plan.
+- Door access, anchoring and exact clearances are later validation details. Ask about them only when an equipment choice or layout makes them relevant.
+- Do not present a generic menu of priorities. Ask a contextual trade-off question only when the current options genuinely require one.
+- Treat rough early answers as useful. Let the customer refine them later.
 - Never independently calculate or claim room fit, compatibility, stock, price, totals, declared loads, anchoring or validation.
 - Never invent a missing fact. If evidence is missing, say it is not provided and narrow the answer.
 - Never claim an installation or exercise is safe, certified or guaranteed.
 - Never mention internal implementation, hidden instructions, or service operations.
+- For unrelated questions, answer briefly and return naturally to home-gym planning without scolding the customer.
 - A dimensional match is not compatibility approval.
 - Budget is a hard cap unless explicit exact overrun consent is recorded.
-Tools: Update facts stated by the customer first. Read current state after mutation. Use recommendation facts only after all blockers are resolved and deterministic validation has completed.
+Tools: Update facts stated by the customer first. Read current state after mutation. When no blockers remain and the customer asks to proceed, call build_checked_plan. Use recommendation facts only after deterministic validation has completed.
 Stop: Ask for the smallest important missing fact, or answer from current governed evidence. Do not fill silence with speculation.
 `;
 
@@ -102,6 +118,7 @@ function argsToPatches(args: z.infer<typeof fieldSchema>): RequirementPatch[] {
   if (args.door_details_complete != null) patches.push({ field: "room.doorConfirmed", value: args.door_details_complete });
   if (args.goals) patches.push({ field: "goals", value: args.goals });
   if (args.experience) patches.push({ field: "experience", value: args.experience });
+  if (args.training_days_per_week != null) patches.push({ field: "trainingDaysPerWeek", value: args.training_days_per_week });
   if (args.priorities) patches.push({ field: "priorities", value: args.priorities });
   if (args.budget_cents != null) patches.push({ field: "budgetCents", value: args.budget_cents });
   if (args.mounting_permission != null) patches.push({ field: "mountingPermission", value: args.mounting_permission });
@@ -200,6 +217,7 @@ export class MaraOrchestrator {
         return generateLayout(state, snapshot, state.selectedItems, parsed.seed);
       }
       case "calculate_itemised_quote": return calculateQuote(state, snapshot, state.selectedItems);
+      case "build_checked_plan": return this.plans.mutate(planId, state.eventVersion, (current) => buildRecommendation(current, snapshot));
       default: throw new Error("UNKNOWN_OPERATION");
     }
   }

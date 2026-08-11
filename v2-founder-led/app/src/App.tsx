@@ -128,7 +128,7 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
     {error && <div className="global-error" role="alert">{error}<button onClick={() => setError(null)}>Dismiss</button></div>}
 
     <div className={`workspace mobile-${mobileTab}`}>
-      <ChatPane state={state} messages={messages} busy={busy} onSend={send} />
+      <ChatPane state={state} catalogue={catalogue} messages={messages} busy={busy} onSend={send} />
       <section className="room-workspace" aria-label="Room workspace">
         <header className="workspace-header"><div className="view-control" aria-label="Room view"><button className={roomView === "2d" ? "active" : ""} onClick={() => setRoomView("2d")}>2D plan</button><button className={roomView === "3d" ? "active" : ""} onClick={() => setRoomView("3d")}>3D room</button></div><button className="plan-drawer-button" onClick={() => setMobileTab("plan")}><PanelRight size={17} />Plan and quote</button></header>
         <div className="room-surface" role="region" aria-label="Interactive room plan" tabIndex={0}>

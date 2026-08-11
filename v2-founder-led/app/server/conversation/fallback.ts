@@ -43,6 +43,10 @@ export function extractRequirementPatches(message: string, state: PlanState): Re
   else if (/very experienced|advanced|experienced|powerlifter|bodybuilder/.test(text)) patches.push({ field: "experience", value: "experienced" });
   else if (/some experience|intermediate/.test(text)) patches.push({ field: "experience", value: "some_experience" });
 
+  const frequency = text.match(/(?:train(?:ing)?|work(?:ing)?\s*out)\s*(\d)\s*(?:times?|days?)\s*(?:a|per)\s*week|(?:^|\s)(\d)\s*(?:times?|days?)\s*(?:a|per)\s*week/);
+  const trainingDays = Number(frequency?.[1] ?? frequency?.[2]);
+  if (trainingDays >= 1 && trainingDays <= 7) patches.push({ field: "trainingDaysPerWeek", value: trainingDays });
+
   if (/no (door|obstruction)|nothing fixed|clear rectangle/.test(text)) patches.push({ field: "room.doorConfirmed", value: true });
   if (/versatile|versatility/.test(text)) patches.push({ field: "priorities", value: ["versatility"] });
   else if (/open floor|floor space/.test(text)) patches.push({ field: "priorities", value: ["open_floor"] });
@@ -58,15 +62,16 @@ const questionFor: Record<string, string> = {
   "room.widthMm": "What are the room's length, width and ceiling height? Metres or centimetres are both fine.",
   "room.lengthMm": "What are the room's length, width and ceiling height? Metres or centimetres are both fine.",
   "room.heightMm": "What is the ceiling height?",
-  "room.doorConfirmed": "Are there any inward-opening doors or fixed obstructions to include? You can simply say none.",
+  "room.doorConfirmed": "Before we place the larger equipment, are there any inward-opening doors or fixed obstructions I should account for?",
   goals: "What kind of training matters most: strength, bodybuilding, cardio, calisthenics or general fitness?",
   experience: "How experienced are you with gym equipment: beginner, some experience or experienced?",
-  priorities: "Which matters most if we need a compromise: versatility, open floor space, cardio, storage or lowest cost?",
-  budgetCents: "What is the maximum all-in budget in euro, including the smaller essentials?",
+  priorities: "If we need to make a trade-off later, what would you most want the room to preserve?",
+  budgetCents: "What budget would feel comfortable for the complete setup? A rough ceiling in euro is perfect.",
 };
 
 export function nextQuestion(state: PlanState): string {
   return questionFor[state.blockers[0]] ?? "What would you like to change or explore next?";
+  if (!state.blockers.length) return "I have enough to build your first option. Would you like me to put it together?";
 }
 
 export function fallbackReply(state: PlanState, acceptedCount: number): string {
@@ -75,6 +80,19 @@ export function fallbackReply(state: PlanState, acceptedCount: number): string {
     return `I have built a checked plan with ${state.selectedItems.length} items. The complete known quote is ${total}. ${state.recommendation.compromise ?? "You can inspect or adjust every part of it in the plan."}`;
   }
   if (state.status === "infeasible") return `${state.recommendation.explanationFacts[0] ?? "I cannot build a complete checked plan from the current constraints."} Would you rather revise the plan or review the exact shortfall?`;
-  const acknowledgement = acceptedCount ? "Thanks, I've added that to your plan. " : "";
+  const acknowledgement = acceptedCount ? humanAcknowledgement(state) : "";
   return `${acknowledgement}${nextQuestion(state)}`;
+}
+
+function humanAcknowledgement(state: PlanState): string {
+  const goal = state.requirements.goals.value?.[0];
+  const experience = state.requirements.experience.value;
+  const days = state.requirements.trainingDaysPerWeek.value;
+  const budget = state.requirements.budgetCents.value;
+  if (budget && goal) return `That gives us a clear ${goal === "bodybuilding" ? "muscle-building" : goal.replaceAll("_", " ")} brief and a EUR ${(budget / 100).toLocaleString("en-IE")} ceiling. `;
+  if (experience === "beginner" && days) return `Perfect - a straightforward setup you can grow into will suit ${days} sessions a week well. `;
+  if (goal === "bodybuilding") return "Great - we'll focus on productive muscle-building equipment without filling the room for the sake of it. ";
+  if (state.journeyType.value === "new_space") return "Great - let's shape the room around how you actually want to train. ";
+  if (experience) return `Thanks - I'll keep the plan appropriate for your ${experience.replaceAll("_", " ")} experience. `;
+  return "Thanks - that helps narrow the plan. ";
 }

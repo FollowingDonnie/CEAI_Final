@@ -175,6 +175,7 @@ export interface Requirements {
   goals: RequirementField<string[]>;
   originalGoalText: RequirementField<string>;
   experience: RequirementField<"beginner" | "some_experience" | "experienced">;
+  trainingDaysPerWeek: RequirementField<number>;
   intendedUsers: RequirementField<number>;
   priorities: RequirementField<string[]>;
   budgetCents: RequirementField<number>;
@@ -303,7 +304,7 @@ export type RequirementPatch =
   | { field: "goals" | "priorities"; value: string[] }
   | { field: "originalGoalText"; value: string }
   | { field: "experience"; value: "beginner" | "some_experience" | "experienced" }
-  | { field: "intendedUsers" | "budgetCents"; value: number }
+  | { field: "trainingDaysPerWeek" | "intendedUsers" | "budgetCents"; value: number }
   | { field: "mountingPermission"; value: boolean }
   | { field: "noiseImpactPreference"; value: "low" | "normal" | "not_sure" };
 
