@@ -49,6 +49,8 @@ test("response-reference validation rejects invented records, sources, actions, 
     { ...valid, record_references: ["invented"] },
     { ...valid, source_references: ["https://invented.example"] },
     { ...valid, suggested_structured_action: "buy" },
-    { ...valid, answer: "It should fit and is safe to use." }
+    { ...valid, answer: "It should fit and is safe to use." },
+    { ...valid, answer: "The registry record rel-v2-cable has effectiveEvidenceState condition_dependent." },
+    { ...valid, answer: "The registry record says two conditions still need checking." }
   ]) assert.throws(() => validateGuideResponse(invalid, context), /could not be verified/i);
 });
