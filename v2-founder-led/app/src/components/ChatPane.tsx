@@ -11,17 +11,20 @@ interface Props {
   thinkingLabel: string | null;
   onBuild: () => Promise<void>;
   onAddRefinement: (query: string, userMessage: string) => Promise<void>;
+  pendingAddition: { name: string; projectedTotalCents: number; overrunCents: number } | null;
   onSkipRefinement: (message: string) => void;
+  onAuthoriseAddition: () => Promise<void>;
+  onDeclineAddition: () => void;
 }
 
-export function ChatPane({ state, catalogue, messages, busy, thinkingLabel, onSend, onBuild, onAddRefinement, onSkipRefinement }: Props) {
+export function ChatPane({ state, catalogue, messages, busy, thinkingLabel, pendingAddition, onSend, onBuild, onAddRefinement, onSkipRefinement, onAuthoriseAddition, onDeclineAddition }: Props) {
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const choices = quickChoices(state, catalogue);
   const refinement = postBuildRefinement(state, catalogue, messages);
   const showFlexibleGoalsHint = state.blockers[0] === "goals";
-  const canBuild = !state.blockers.length && ["empty", "stale"].includes(state.recommendation.status);
+  const canBuild = state.journeyType.value === "new_space" && !state.blockers.length && ["empty", "stale"].includes(state.recommendation.status);
   useEffect(() => {
     const container = messagesRef.current;
     if (container) container.scrollTop = container.scrollHeight;
@@ -54,7 +57,15 @@ export function ChatPane({ state, catalogue, messages, busy, thinkingLabel, onSe
             <button className="primary-button" type="button" onClick={onBuild}>{state.recommendation.status === "empty" ? "Build with current info" : "Update plan"}</button>
           </div>
         )}
-        {!busy && refinement && (
+        {!busy && pendingAddition && (
+          <div className="refinement-step budget-decision">
+            <div className="quick-choices" aria-label="Budget decision">
+              <button type="button" onClick={onAuthoriseAddition}>Add anyway - EUR {(pendingAddition.overrunCents / 100).toLocaleString("en-IE")} over</button>
+              <button type="button" onClick={onDeclineAddition}>Keep current plan</button>
+            </div>
+          </div>
+        )}
+        {!busy && !pendingAddition && refinement && (
           <div className="refinement-step">
             <div className="message assistant refinement-message">
               <Sparkles size={15} aria-hidden="true" />
@@ -153,16 +164,31 @@ function postBuildRefinement(state: PlanState, catalogue: Variant[], messages: C
   const hasRack = selected.some((item) => item.category === "rack");
   const hasBarbell = selected.some((item) => item.category === "barbell");
   const hasPlates = selected.some((item) => item.category === "plates");
+  const rack = selected.find((item) => item.category === "rack");
   const hasSafetySupport = selected.some((item) => ["a12-spotter-arms", "a14-safety-straps"].includes(item.variantId));
   const safetyHandled = hasSafetySupport || userReplies.some((text) => /(?:add|no|skip|not now).*spotter/.test(text));
 
-  if (hasRack && hasBarbell && !safetyHandled) {
+  const spotterHosts = new Set(["h30-half-rack-entry", "h40-half-rack-pro", "p40-power-rack-compact", "p50-power-rack-standard", "f20-folding-rack-compact", "f30-folding-rack-pro"]);
+  if (hasRack && hasBarbell && rack && spotterHosts.has(rack.variantId) && !safetyHandled) {
     return {
-      prompt: "Your core lifting setup is ready. The bar position shown on the rack is illustrative; the current catalogue does not list a separate J-hook product, so none has been added to the quote. Would you like me to check compatible spotter arms?",
+      prompt: "Your rack, governed J-hooks and barbell setup are ready. Would you like me to add compatible spotter arms and update the room and quote?",
       query: "compatible spotter arms",
       acceptLabel: "Add spotter arms",
       acceptMessage: "Yes, add compatible spotter arms to the plan.",
       skipMessage: "Not now for spotter arms.",
+    };
+  }
+
+  const calisthenics = (state.requirements.goals.value ?? []).includes("calisthenics");
+  const ringsHandled = selected.some((item) => item.variantId === "a32-gym-rings") || userReplies.some((text) => /(?:add|no|skip|not now).*rings/.test(text));
+  const ringHosts = new Set(["h30-half-rack-entry", "h40-half-rack-pro", "p40-power-rack-compact", "p50-power-rack-standard", "f30-folding-rack-pro"]);
+  if (calisthenics && rack && ringHosts.has(rack.variantId) && (state.requirements.room.heightMm.value ?? 0) >= 2300 && !ringsHandled) {
+    return {
+      prompt: "Your pull-up and open-floor setup is ready. Would you like me to add governed gymnastic rings for extra bodyweight progressions?",
+      query: "compatible gym rings",
+      acceptLabel: "Add gym rings",
+      acceptMessage: "Yes, add compatible gym rings to the plan.",
+      skipMessage: "Not now for gym rings.",
     };
   }
 

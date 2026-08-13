@@ -46,7 +46,10 @@ function setsForNewSpace(state: PlanState, snapshot: CatalogueSnapshot): string[
 
   if (strength) {
     for (const rack of racks.slice(0, 5)) {
-      const core = [rack, benches[0], barbells[0], plates[0], flooring[0]].filter(Boolean).map((item) => item.variantId);
+      const host: ExistingEquipment = { id: `host-${rack.variantId}`, identityKind: "northstar", variantId: rack.variantId, evidenceStatus: "verified" };
+      const jHooks = active(snapshot, "attachment").find((item) => item.tags.includes("required_setup") && checkCompatibility(snapshot, host, item.variantId).allowedInPlan);
+      if (!jHooks) continue;
+      const core = [rack, jHooks, benches[0], barbells[0], plates[0], flooring[0]].filter(Boolean).map((item) => item.variantId);
       sets.push(core);
       if (wantsCardio) for (const machine of cardio.slice(0, 2)) sets.push([...core, machine.variantId]);
     }
@@ -71,7 +74,7 @@ function setsForUpgrade(state: PlanState, snapshot: CatalogueSnapshot): string[]
   if (goals.has("calisthenics")) ["dip", "pull_up"].forEach((tag) => desiredTags.add(tag));
   if (goals.has("bodybuilding")) ["cable_resistance", "free_weight_hypertrophy"].forEach((tag) => desiredTags.add(tag));
   if (goals.has("strength")) ["barbell_strength", "bench_press"].forEach((tag) => desiredTags.add(tag));
-  const candidates = active(snapshot, "attachment").filter((item) => !desiredTags.size || item.tags.some((tag) => desiredTags.has(tag)));
+  const candidates = active(snapshot, "attachment").filter((item) => !item.tags.includes("required_setup") && (!desiredTags.size || item.tags.some((tag) => desiredTags.has(tag))));
   return candidates.flatMap((attachment) => {
     const compatibility = checkCompatibility(snapshot, host, attachment.variantId, state.selectedItems);
     if (compatibility.state === "explicitly_compatible") return [[...(host.identityKind === "manual" ? [] : [host.variantId]), attachment.variantId]];
@@ -104,19 +107,29 @@ export function buildRecommendation(state: PlanState, snapshot: CatalogueSnapsho
     return { ids, layout, quote, score: quality + (utilisation * 12) };
   });
   const valid = evaluated.filter((item) => item.layout.status === "feasible" && item.quote.status === "current" && item.quote.grandTotalCents != null);
-  const inBudget = valid.filter((item) => item.quote.withinBudget).sort((a, b) => b.score - a.score || b.quote.grandTotalCents! - a.quote.grandTotalCents!);
+  const budgetRequired = next.requirements.budgetCents.value != null;
+  const inBudget = valid.filter((item) => !budgetRequired || item.quote.withinBudget).sort((a, b) => b.score - a.score || b.quote.grandTotalCents! - a.quote.grandTotalCents!);
   const overBudget = valid.filter((item) => !item.quote.withinBudget).sort((a, b) => a.quote.grandTotalCents! - b.quote.grandTotalCents!);
   const chosen = inBudget[0] ?? (next.budgetConsent.overrunAllowed ? overBudget.find((item) => (item.quote.overrunCents ?? Infinity) <= (next.budgetConsent.maximumAuthorisedOverrunCents ?? 0)) : undefined);
 
   if (!chosen) {
     const least = overBudget[0];
+    const requestedStrength = (next.requirements.goals.value ?? []).some((goal) => ["strength", "bodybuilding", "barbell_strength"].includes(goal));
+    const minimumRackHeight = Math.min(...active(snapshot, "rack").map((item) => item.geometry.operatingHeightMm ?? item.geometry.heightMm));
+    const roomHeight = next.requirements.room.heightMm.value ?? 0;
+    const lowCeilingFact = requestedStrength && Number.isFinite(minimumRackHeight) && roomHeight < minimumRackHeight
+      ? `A standard rack cannot be included because the recorded ${(roomHeight / 1000).toFixed(2)} m ceiling is below the ${(minimumRackHeight / 1000).toFixed(2)} m minimum height of the current rack options.`
+      : null;
     next.status = "infeasible";
     next.recommendation = {
       status: "infeasible",
       candidateIds: [],
       exclusions: evaluated.flatMap((item) => item.layout.unplacedItems.map((variantId) => ({ variantId, reasons: item.layout.violations.map((violation) => violation.code) }))),
-      explanationFacts: least?.quote.overrunCents != null ? [`The least-cost validated package is EUR ${(least.quote.overrunCents / 100).toFixed(2)} over the current budget.`] : ["No complete package passes the current room and budget checks."],
-      compromise: "Revise a room, goal or budget constraint before a plan can be recommended.",
+      explanationFacts: [
+        ...(lowCeilingFact ? [lowCeilingFact] : []),
+        least?.quote.overrunCents != null ? `The least-cost validated package is EUR ${(least.quote.overrunCents / 100).toFixed(2)} over the current budget.` : "No complete package passes all remaining room and budget checks.",
+      ],
+      compromise: lowCeilingFact ?? "Revise a room, goal or budget constraint before a plan can be recommended.",
       requirementsVersion: next.requirementsVersion,
       catalogueSnapshotId: snapshot.snapshotId,
     };
@@ -135,16 +148,24 @@ export function buildRecommendation(state: PlanState, snapshot: CatalogueSnapsho
       .map((attachmentId) => checkCompatibility(snapshot, upgradeHost, attachmentId, chosen.ids))
     : [];
   next.quote = chosen.quote;
+  const selectedHasRack = chosen.ids.some((id) => snapshot.variants.find((item) => item.variantId === id)?.category === "rack");
+  const requestedStrength = (next.requirements.goals.value ?? []).some((goal) => ["strength", "bodybuilding", "barbell_strength"].includes(goal));
+  const minimumRackHeight = Math.min(...active(snapshot, "rack").map((item) => item.geometry.operatingHeightMm ?? item.geometry.heightMm));
+  const roomHeight = next.requirements.room.heightMm.value ?? 0;
+  const roomConstraint = requestedStrength && !selectedHasRack && Number.isFinite(minimumRackHeight) && roomHeight < minimumRackHeight
+    ? `A standard rack was left out because the recorded ${(roomHeight / 1000).toFixed(2)} m ceiling is below the ${(minimumRackHeight / 1000).toFixed(2)} m minimum height of the current rack options.`
+    : null;
   next.recommendation = {
     status: "current",
     candidateIds: chosen.ids,
     exclusions: [],
     explanationFacts: [
       "The package covers the recorded primary training goal.",
+      ...(roomConstraint ? [roomConstraint] : []),
       "Every placed item passes the recorded room geometry and encoded clearances.",
-      chosen.quote.withinBudget ? `The complete known quote is EUR ${((next.requirements.budgetCents.value! - chosen.quote.grandTotalCents!) / 100).toFixed(2)} under budget.` : `This consented comparison is EUR ${((chosen.quote.overrunCents ?? 0) / 100).toFixed(2)} over budget.`,
+      next.requirements.budgetCents.value == null ? `The complete known upgrade cost is EUR ${(chosen.quote.grandTotalCents! / 100).toFixed(2)}.` : chosen.quote.withinBudget ? `The complete known quote is EUR ${((next.requirements.budgetCents.value - chosen.quote.grandTotalCents!) / 100).toFixed(2)} under budget.` : `This consented comparison is EUR ${((chosen.quote.overrunCents ?? 0) / 100).toFixed(2)} over budget.`,
     ],
-    compromise: chosen.ids.includes("c20-bike-compact") && (next.requirements.goals.value ?? []).includes("cardio") ? "The compact bike preserves more usable floor area than the rower." : "The plan favours versatility without filling all available floor space.",
+    compromise: roomConstraint ?? (chosen.ids.includes("c20-bike-compact") && (next.requirements.goals.value ?? []).includes("cardio") ? "The compact bike preserves more usable floor area than the rower." : "The plan favours versatility without filling all available floor space."),
     requirementsVersion: next.requirementsVersion,
     catalogueSnapshotId: snapshot.snapshotId,
   };
@@ -166,11 +187,24 @@ export type ProductAdditionResult =
 
 export function addBestMatchingProduct(state: PlanState, snapshot: CatalogueSnapshot, query: string): ProductAdditionResult {
   const normalisedQuery = query.toLowerCase();
+  const exactIntent = [
+    { pattern: /\bspotter arms?\b/, match: (item: Variant) => item.variantId === "a12-spotter-arms" },
+    { pattern: /\bj-?hooks?\b/, match: (item: Variant) => item.variantId === "a08-j-hooks" },
+    { pattern: /\b(?:gymnastic |gym )?rings?\b/, match: (item: Variant) => item.variantId === "a32-gym-rings" },
+    { pattern: /\bsafety straps?\b/, match: (item: Variant) => item.variantId === "a14-safety-straps" },
+    { pattern: /\bdip (?:handles?|bars?|station|attachment)\b/, match: (item: Variant) => item.variantId === "a10-dip-attachment" },
+    { pattern: /\blandmine\b/, match: (item: Variant) => item.variantId === "a16-landmine" },
+    { pattern: /\bcable (?:kit|attachment|machine|system)\b/, match: (item: Variant) => item.tags.includes("cable_resistance") },
+    { pattern: /\brower|rowing machine\b/, match: (item: Variant) => item.variantId === "c10-rower-standard" },
+    { pattern: /\b(?:compact )?bike|bicycle\b/, match: (item: Variant) => item.variantId === "c20-bike-compact" },
+    { pattern: /\bstepper\b/, match: (item: Variant) => item.variantId === "c30-stepper-compact" },
+    { pattern: /\bplate (?:storage|tree|rack)\b/, match: (item: Variant) => item.variantId === "a18-plate-storage" || item.variantId === "st10-storage-vertical" },
+  ].find((intent) => intent.pattern.test(normalisedQuery));
   const requestedCategory: Variant["category"] | null = /\b(storage|store|organis(?:e|er|ing)|plate tree)\b/.test(normalisedQuery)
     ? "storage"
     : /\b(rower|rowing machine|bike|bicycle|stepper|cardio machine)\b/.test(normalisedQuery)
       ? "cardio"
-      : /\b(spotter arms?|safety straps?|dip attachment|landmine attachment|cable attachment)\b/.test(normalisedQuery)
+      : /\b(spotter arms?|j-?hooks?|rings?|safety straps?|dip (?:handles?|bars?|station|attachment)|landmine|cable (?:kit|attachment|machine|system))\b/.test(normalisedQuery)
         ? "attachment"
         : null;
   const existingHost = state.existingEquipment.find((item) => item.identityKind === "northstar");
@@ -179,8 +213,13 @@ export function addBestMatchingProduct(state: PlanState, snapshot: CatalogueSnap
   const host: ExistingEquipment | null = rackVariantId
     ? { id: `host-${rackVariantId}`, identityKind: "northstar", variantId: rackVariantId, evidenceStatus: "verified" }
     : null;
-  const candidates = searchCatalogue(snapshot, { text: query }).slice(0, 12).filter((product) => {
-    if (requestedCategory && product.category !== requestedCategory) return false;
+  const searchPool = exactIntent
+    ? snapshot.variants.filter((product) => product.active && ["in_stock", "low_stock"].includes(product.stockState) && exactIntent.match(product))
+    : searchCatalogue(snapshot, { text: query }).slice(0, 12);
+  const roomHeight = state.requirements.room.heightMm.value;
+  const candidates = searchPool.filter((product) => {
+    if (!exactIntent && requestedCategory && product.category !== requestedCategory) return false;
+    if (roomHeight != null && (product.geometry.operatingHeightMm ?? product.geometry.heightMm) > roomHeight) return false;
     if (product.category !== "attachment") return true;
     return host ? checkCompatibility(snapshot, host, product.variantId, state.selectedItems).allowedInPlan : false;
   }).slice(0, 8);
@@ -189,13 +228,14 @@ export function addBestMatchingProduct(state: PlanState, snapshot: CatalogueSnap
   }
 
   const evaluated = candidates.map((product) => {
-    const ids = [...new Set([...state.selectedItems, product.variantId])];
+    const ownedHostIds = state.journeyType.value === "upgrade" && host && host.identityKind === "northstar" ? [host.variantId] : [];
+    const ids = [...new Set([...ownedHostIds, ...state.selectedItems, product.variantId])];
     const layout = generateLayout(state, snapshot, ids);
     const quote = calculateQuote(state, snapshot, ids);
     return { product, ids, layout, quote };
   });
   const fitting = evaluated.filter((item) => item.layout.status === "feasible" && item.quote.status === "current" && item.quote.grandTotalCents != null);
-  const allowed = fitting.find((item) => item.quote.withinBudget || (
+  const allowed = fitting.find((item) => state.requirements.budgetCents.value == null || item.quote.withinBudget || (
     state.budgetConsent.overrunAllowed
     && (item.quote.overrunCents ?? Infinity) <= (state.budgetConsent.maximumAuthorisedOverrunCents ?? 0)
   ));

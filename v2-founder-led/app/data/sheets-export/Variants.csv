@@ -9,6 +9,8 @@ p60-power-rack-premium,p60-power-rack,NS-P60-G3,G3 six-post,none,G3,750,rack loa
 f20-folding-rack-compact,f20-folding-rack,NS-F20-G2,G2 wall folding,wall_required,G2,300,rack load,2.5,7,verified,TRUE
 f30-folding-rack-pro,f30-folding-rack,NS-F30-G2,G2 deep folding,wall_required,G2,350,rack load,3,6,verified,TRUE
 a10-dip-attachment,a10-dip-attachment,NS-A10-G2,G2 side-mount,none,G2,,,,5,verified,TRUE
+a08-j-hooks,a08-j-hooks,NS-A08-UNI,Northstar governed pair,none,G2,,,,10,verified,TRUE
+a32-gym-rings,a32-gym-rings,NS-A32-G2,Adjustable strap pair,none,G2,,,,8,verified,TRUE
 a12-spotter-arms,a12-spotter-arms,NS-A12-G2,G2 pair,none,G2,,,,5,verified,TRUE
 a14-safety-straps,a14-safety-straps,NS-A14-G2,G2 pair,none,G2,,,,5,verified,TRUE
 a16-landmine,a16-landmine,NS-A16-UNI,Base mount,none,G2,,,,5,verified,TRUE

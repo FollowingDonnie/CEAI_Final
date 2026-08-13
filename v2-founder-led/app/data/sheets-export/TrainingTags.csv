@@ -36,6 +36,12 @@ f30-folding-rack-pro,pull_up,supported,6,evidence-f30-folding-rack-pro
 f30-folding-rack-pro,open_floor_conditioning,supported,6,evidence-f30-folding-rack-pro
 a10-dip-attachment,dip,supported,5,evidence-a10-dip-attachment
 a10-dip-attachment,calisthenics,supported,5,evidence-a10-dip-attachment
+a08-j-hooks,barbell_strength,supported,10,evidence-a08-j-hooks
+a08-j-hooks,bench_press,supported,10,evidence-a08-j-hooks
+a08-j-hooks,required_setup,supported,10,evidence-a08-j-hooks
+a32-gym-rings,calisthenics,supported,8,evidence-a32-gym-rings
+a32-gym-rings,rings,supported,8,evidence-a32-gym-rings
+a32-gym-rings,pull_up,supported,8,evidence-a32-gym-rings
 a12-spotter-arms,barbell_strength,supported,5,evidence-a12-spotter-arms
 a12-spotter-arms,bench_press,supported,5,evidence-a12-spotter-arms
 a14-safety-straps,barbell_strength,supported,5,evidence-a14-safety-straps

@@ -216,6 +216,13 @@ function visualInventoryObject(item: VisualInventoryItem, selected: boolean) {
   if (item.mode === "mounted_attachment") {
     if (item.variant.variantId === "a18-plate-storage") {
       for (const side of [-1, 1]) { const peg = box(.42, .045, .045, colour, .7); peg.position.set(side * .34, .54, 0); group.add(peg); }
+    } else if (item.variant.variantId === "a08-j-hooks") {
+      for (const side of [-1, 1]) { const hook = box(.09, .16, .14, colour, .7); hook.position.set(side * .42, 1.18, .08); group.add(hook); }
+    } else if (item.variant.variantId === "a32-gym-rings") {
+      for (const side of [-1, 1]) {
+        const strap = box(.012, .72, .012, "#30393b", .5); strap.position.set(side * .22, 1.58, .12); group.add(strap);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(.09, .013, 10, 28), new THREE.MeshStandardMaterial({ color: colour, roughness: .62 })); ring.position.set(side * .22, 1.18, .12); group.add(ring);
+      }
     } else if (item.variant.variantId === "a12-spotter-arms") {
       for (const side of [-1, 1]) { const arm = box(.07, .09, .62, colour, .65); arm.position.set(side * .42, .82, .28); group.add(arm); }
     } else if (item.variant.variantId === "a10-dip-attachment") {

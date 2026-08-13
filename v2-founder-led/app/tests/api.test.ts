@@ -189,14 +189,17 @@ describe("Northstar API", () => {
     expect(applied.body.state.quote.withinBudget).toBe(true);
   });
 
-  it("swaps an item only after the replacement passes room and budget checks", async () => {
+  it("replaces an item only with the customer's selected checked alternative", async () => {
     const { app } = createApp({ apiKey: undefined });
     const state = await createReadyPlan(app, 500000);
     const platesId = state.selectedItems.find((id: string) => id.includes("plate-pack"));
     expect(platesId).toBeTruthy();
-    const swapped = await request(app).post(`/api/plans/${state.planId}/items/${platesId}/swap`).send({ expectedVersion: state.eventVersion }).expect(200);
+    const options = await request(app).get(`/api/plans/${state.planId}/items/${platesId}/replacements`).expect(200);
+    expect(options.body.replacements.length).toBeGreaterThan(0);
+    const replacementId = options.body.replacements[0].product.variantId;
+    const swapped = await request(app).post(`/api/plans/${state.planId}/items/${platesId}/replace`).send({ expectedVersion: state.eventVersion, replacementVariantId: replacementId }).expect(200);
     expect(swapped.body.product.category).toBe("plates");
-    expect(swapped.body.product.variantId).not.toBe(platesId);
+    expect(swapped.body.product.variantId).toBe(replacementId);
     expect(swapped.body.state.quote.withinBudget).toBe(true);
     expect(swapped.body.state.placements.every((item: { validationStatus: string }) => item.validationStatus === "valid")).toBe(true);
   });

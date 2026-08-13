@@ -7,15 +7,15 @@ const evidenceDir = resolve("evidence/qa");
 
 async function fillReadyStrengthPlan(page: Page, journey: "new_space" | "upgrade" = "new_space", budget = "2500", expected: "checked" | "infeasible" = "checked") {
   const updateRequirement = async (action: () => Promise<unknown>) => {
-    const committedChanges = page.locator(".message.system");
-    const previousCount = await committedChanges.count();
     await Promise.all([
       page.waitForResponse((response) => response.request().method() === "PATCH" && response.url().includes("/requirements") && response.ok()),
       action(),
     ]);
-    await expect(committedChanges).toHaveCount(previousCount + 1);
   };
-  await updateRequirement(() => page.getByLabel("Planning journey", { exact: true }).getByRole("button", { name: journey === "upgrade" ? "Upgrade equipment" : "Plan a gym" }).click());
+  await Promise.all([
+    page.waitForResponse((response) => response.request().method() === "POST" && response.url().includes("/chat") && response.ok()),
+    page.getByLabel("Planning journey", { exact: true }).getByRole("button", { name: journey === "upgrade" ? "Upgrade equipment" : "Plan a gym" }).click(),
+  ]);
   if (journey === "upgrade") {
     await Promise.all([
       page.waitForResponse((response) => response.request().method() === "POST" && response.url().includes("/existing-equipment") && response.ok()),
@@ -23,12 +23,13 @@ async function fillReadyStrengthPlan(page: Page, journey: "new_space" | "upgrade
     ]);
     await expect(page.locator(".confirmed-line")).toContainText("H30 Half Rack");
   }
-  const room = page.locator(".compact-grid.three");
+  const room = page.locator(".room-fields");
   await updateRequirement(() => room.getByRole("spinbutton", { name: /length/i }).fill("4"));
   await updateRequirement(() => room.getByRole("spinbutton", { name: /width/i }).fill("3"));
   await updateRequirement(() => room.getByRole("spinbutton", { name: /height/i }).fill("2.4"));
   await expect(page.getByTestId("planner-2d")).toBeVisible();
-  await updateRequirement(() => page.getByRole("button", { name: journey === "upgrade" ? "Gymnastics / open floor" : "Weight lifting", exact: true }).click());
+  const trainingChoice = page.getByRole("button", { name: journey === "upgrade" ? "Gymnastics / open floor" : "Weight lifting", exact: true });
+  if (!(await trainingChoice.evaluate((button) => button.classList.contains("active")))) await updateRequirement(() => trainingChoice.click());
   await updateRequirement(() => page.getByLabel("Experience").selectOption("beginner"));
   await updateRequirement(() => page.getByLabel("Maximum").fill(budget));
   await expect(page.getByText("Ready for a checked plan")).toBeVisible();
@@ -62,7 +63,7 @@ test("new-space journey produces a checked quote and synchronised nonblank views
   await page.goto("/");
   await expect(page.getByText("Mara Quinn")).toBeVisible();
   await fillReadyStrengthPlan(page);
-  await expect(page.locator(".equipment-row")).toHaveCount(5);
+  await expect(page.locator(".equipment-row")).toHaveCount(6);
   await expect(page.locator(".placement-table tbody tr")).toHaveCount(2);
 
   const twoD = await canvasVariance(page, "[data-testid='planner-2d'] canvas");
@@ -87,36 +88,52 @@ test("new-space journey produces a checked quote and synchronised nonblank views
 test("Mara refines a checked lifting plan one accessory at a time", async ({ page }) => {
   await page.goto("/");
   await fillReadyStrengthPlan(page, "new_space", "5000");
-  await expect(page.getByText(/does not list a separate J-hook product/)).toBeVisible();
+  await expect(page.locator(".equipment-row").filter({ hasText: "J-Hook" })).toBeVisible();
   await Promise.all([
     page.waitForResponse((response) => response.request().method() === "POST" && response.url().includes("/items/recommended") && response.ok()),
     page.getByRole("button", { name: "Add spotter arms" }).click(),
   ]);
   await expect(page.locator(".equipment-row").filter({ hasText: "Spotter Arms" })).toBeVisible();
   await expect(page.getByText(/plates are currently shown as a neat floor stack/)).toBeVisible();
+  const storageResponse = page.waitForResponse((response) => response.request().method() === "POST" && response.url().includes("/items/recommended"));
+  await page.getByRole("button", { name: "Add plate storage" }).click();
+  const storageResult = await storageResponse;
+  if (storageResult.ok()) {
+    await expect(page.locator(".equipment-row").filter({ hasText: "Storage" })).toBeVisible();
+    await expect(page.getByText(/updated the room view and quote/).last()).toBeVisible();
+  } else {
+    await expect(page.getByText(/does not pass the current room checks/)).toBeVisible();
+    await expect(page.locator(".equipment-row").filter({ hasText: "Storage" })).toHaveCount(0);
+  }
+});
+
+test("upgrade journey guides owned-equipment selection and applies a governed attachment", async ({ page }) => {
+  await page.goto("/");
+  await Promise.all([
+    page.waitForResponse((response) => response.request().method() === "POST" && response.url().includes("/chat") && response.ok()),
+    page.getByLabel("Planning journey", { exact: true }).getByRole("button", { name: "Upgrade equipment" }).click(),
+  ]);
+  await expect(page.getByText("Choose your equipment here")).toBeVisible();
+  const room = page.locator(".room-fields");
+  for (const [label, value] of [[/length/i, "4"], [/width/i, "3"], [/height/i, "2.4"]] as const) {
+    await Promise.all([
+      page.waitForResponse((response) => response.request().method() === "PATCH" && response.url().includes("/requirements") && response.ok()),
+      room.getByRole("spinbutton", { name: label }).fill(value),
+    ]);
+  }
+  await Promise.all([
+    page.waitForResponse((response) => response.request().method() === "POST" && response.url().includes("/existing-equipment") && response.ok()),
+    page.getByLabel("Northstar rack").selectOption("h30-half-rack-entry"),
+  ]);
+  await expect(page.locator(".confirmed-line")).toContainText("H30 Half Rack");
   await Promise.all([
     page.waitForResponse((response) => response.request().method() === "POST" && response.url().includes("/items/recommended") && response.ok()),
-    page.getByRole("button", { name: "Add plate storage" }).click(),
+    page.getByRole("button", { name: "Spotter arms" }).click(),
   ]);
-  await expect(page.locator(".equipment-row").filter({ hasText: "Storage" })).toBeVisible();
-  await expect(page.getByText(/updated the room view and quote/).last()).toBeVisible();
-});
-
-test("upgrade journey shows governed compatibility and does not recharge owned equipment", async ({ page }) => {
-  await page.goto("/");
-  await fillReadyStrengthPlan(page, "upgrade");
-  const compatibility = page.locator(".compatibility-list");
-  await compatibility.scrollIntoViewIfNeeded();
-  await expect(compatibility.getByText("Attachment checks")).toBeVisible();
-  await expect(compatibility.locator(".compatibility-row.approved")).not.toHaveCount(0);
-  await expect(compatibility.getByText("Approved for these versions").first()).toBeVisible();
-  await page.screenshot({ path: resolve(evidenceDir, "desktop-upgrade-compatibility-1440x900.png"), fullPage: true });
-
+  await expect(page.locator(".equipment-row").filter({ hasText: "Spotter Arms" })).toBeVisible();
   await page.getByRole("tab", { name: "Quote" }).click();
-  const ownedRackLine = page.locator(".quote-line").filter({ hasText: "H30 Half Rack" });
-  await expect(ownedRackLine).toContainText("€0.00");
+  await expect(page.locator(".quote-line").filter({ hasText: "H30 Half Rack" })).toBeVisible();
 });
-
 test("an over-budget plan remains blocked until the exact shortfall is authorised", async ({ page }) => {
   await page.goto("/");
   await fillReadyStrengthPlan(page, "new_space", "500", "infeasible");

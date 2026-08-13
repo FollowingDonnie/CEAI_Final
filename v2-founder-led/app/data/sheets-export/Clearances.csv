@@ -9,6 +9,8 @@ clearance-p60-power-rack-premium,p60-power-rack-premium,operating_envelope,activ
 clearance-f20-folding-rack-compact,f20-folding-rack-compact,operating_envelope,active,rectangle,2420,2250,2180,hard,no_hard_overlap,governed_spec,geometry-2026-08,Operating area
 clearance-f30-folding-rack-pro,f30-folding-rack-pro,operating_envelope,active,rectangle,2480,2450,2300,hard,no_hard_overlap,governed_spec,geometry-2026-08,Operating area
 clearance-a10-dip-attachment,a10-dip-attachment,operating_envelope,active,rectangle,650,520,250,hard,no_hard_overlap,governed_spec,geometry-2026-08,Operating area
+clearance-a08-j-hooks,a08-j-hooks,operating_envelope,active,rectangle,120,180,220,hard,no_hard_overlap,governed_spec,geometry-2026-08,Operating area
+clearance-a32-gym-rings,a32-gym-rings,operating_envelope,active,rectangle,1800,1800,2300,hard,no_hard_overlap,governed_spec,geometry-2026-08,Operating area
 clearance-a12-spotter-arms,a12-spotter-arms,operating_envelope,active,rectangle,160,650,220,hard,no_hard_overlap,governed_spec,geometry-2026-08,Operating area
 clearance-a14-safety-straps,a14-safety-straps,operating_envelope,active,rectangle,80,900,80,hard,no_hard_overlap,governed_spec,geometry-2026-08,Operating area
 clearance-a16-landmine,a16-landmine,operating_envelope,active,rectangle,1500,1800,160,hard,no_hard_overlap,governed_spec,geometry-2026-08,Operating area

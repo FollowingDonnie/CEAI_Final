@@ -56,7 +56,7 @@ export function PlanSummary({ state, catalogue, alternatives, selectedId, busy, 
       {valid ? <CheckCircle2 size={20} /> : <AlertTriangle size={20} />}
       <span><strong>{valid ? "Checked plan" : state.recommendation.status === "infeasible" ? "Plan needs a change" : "Checks need refreshing"}</strong><small>{state.recommendation.explanationFacts[0]}</small></span>
     </div>
-    {state.recommendation.compromise && <p className="compromise"><CircleDashed size={17} /><span><strong>Planning judgement</strong>{state.recommendation.compromise}</span></p>}
+    {state.recommendation.compromise && <div className="plan-rationale"><CircleDashed size={17} /><span><strong>How the room shaped this plan</strong><small>{state.recommendation.compromise}</small>{state.recommendation.explanationFacts.slice(1, 3).map((fact) => <small key={fact}>{fact}</small>)}</span></div>}
 
     {valid && alternatives.length > 1 && <div className="plan-options">
       <h3>Compare checked options</h3>
@@ -66,11 +66,11 @@ export function PlanSummary({ state, catalogue, alternatives, selectedId, busy, 
       })}</div>
     </div>}
 
-    {state.selectedItems.length > 0 && <div className="equipment-list"><h3><PackageCheck size={17} />Equipment package</h3>{state.selectedItems.map((id) => {
+    {state.selectedItems.length > 0 && <div className="equipment-list"><h3><PackageCheck size={17} />Equipment package</h3><p className="equipment-list-hint">Select any item to view details or replace it.</p>{state.selectedItems.map((id) => {
       const item = variantById(catalogue, id); if (!item) return null;
       const placement = state.placements.find((value) => value.variantId === id);
       const owned = state.existingEquipment.some((value) => value.identityKind !== "manual" && value.variantId === id);
-      return <button type="button" className={`equipment-row ${selectedId === id ? "selected" : ""}`} key={id} onClick={() => onSelect(id)}><span className="category-swatch" style={{ background: categoryColour[item.category] }} aria-hidden="true" /><span><strong>{item.name}</strong><small>{item.sku} | {item.configuration}</small></span>{placement?.locked && <LockKeyhole size={14} aria-label="Locked in room" />}<span>{owned ? "Owned" : euro(item.priceCents)}</span><ChevronRight size={16} /></button>;
+      return <button type="button" aria-label={`View details for ${item.name}`} className={`equipment-row ${selectedId === id ? "selected" : ""}`} key={id} onClick={() => onSelect(id)}><span className="category-swatch" style={{ background: categoryColour[item.category] }} aria-hidden="true" /><span><strong>{item.name}</strong><small>{item.sku} | {item.configuration}</small></span>{placement?.locked && <LockKeyhole size={14} aria-label="Locked in room" />}<span>{owned ? "Owned" : euro(item.priceCents)}</span><ChevronRight size={16} /></button>;
     })}</div>}
 
     {state.journeyType.value === "upgrade" && state.compatibilityResults.length > 0 && <div className="compatibility-list">

@@ -119,3 +119,35 @@ it("moves plates onto selected rack storage in the visual inventory", () => {
     expect(ownedLine).toMatchObject({ unitPriceCents: 0, lineTotalCents: 0, commercialStatus: "included" });
     expect(built.compatibilityResults[0]).toMatchObject({ state: "explicitly_compatible", allowedInPlan: true });
   });
+
+describe("founder-testing regressions", () => {
+  it("includes governed J-hooks in every rack-and-barbell package", () => {
+    const ready = applyRequirementPatches(createPlan(snapshot), readyPatches, "control");
+    const built = buildRecommendation(ready, snapshot);
+    expect(built.status).toBe("current");
+    expect(built.selectedItems).toContain("a08-j-hooks");
+  });
+
+  it("does not require new-gym preferences or a budget for a compatible upgrade", () => {
+    let state = applyRequirementPatches(createPlan(snapshot), [
+      { field: "journeyType", value: "upgrade" },
+      { field: "room.lengthMm", value: 4000 },
+      { field: "room.widthMm", value: 3000 },
+      { field: "room.heightMm", value: 2400 },
+    ], "control");
+    state.existingEquipment = [{ id: "owned-h30", identityKind: "northstar", variantId: "h30-half-rack-entry", evidenceStatus: "verified" }];
+    expect(getBlockers(state)).toEqual([]);
+  });
+
+  it("explains a low-ceiling decision using the recorded and required heights", () => {
+    const lowRoom = applyRequirementPatches(createPlan(snapshot), [
+      ...readyPatches,
+      { field: "room.heightMm", value: 1500 },
+      { field: "budgetCents", value: 500000 },
+    ], "control");
+    const built = buildRecommendation(lowRoom, snapshot);
+    expect(built.recommendation.explanationFacts.join(" ")).toMatch(/1\.50 m ceiling/i);
+    expect(built.recommendation.explanationFacts.join(" ")).toMatch(/minimum height/i);
+    expect(built.selectedItems.some((id) => snapshot.variants.find((item) => item.variantId === id)?.category === "rack")).toBe(false);
+  });
+});

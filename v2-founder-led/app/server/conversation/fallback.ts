@@ -58,7 +58,7 @@ export function extractRequirementPatches(message: string, state: PlanState): Re
 
 const questionFor: Record<string, string> = {
   journeyType: "Are you planning a new training space, or upgrading equipment you already own?",
-  existingEquipment: "Which rack or piece of equipment are you upgrading? A Northstar model name is ideal, but measured dimensions also work.",
+  existingEquipment: "Choose your exact rack in the highlighted Equipment you own section of the Plan panel. If it is not a Northstar model, use Enter another item and add its measured footprint.",
   "room.widthMm": "What are the room's length, width and ceiling height? Metres or centimetres are both fine.",
   "room.lengthMm": "What are the room's length, width and ceiling height? Metres or centimetres are both fine.",
   "room.heightMm": "What is the ceiling height?",
@@ -70,6 +70,7 @@ const questionFor: Record<string, string> = {
 };
 
 export function nextQuestion(state: PlanState): string {
+  if (!state.blockers.length && state.journeyType.value === "upgrade" && !(state.requirements.goals.value ?? []).length) return "What would you like to add or improve? You can choose an upgrade shortcut in the Plan panel or describe it here.";
   if (!state.blockers.length) return "That is enough for a useful first option. Use Build with current info when you are ready.";
   return questionFor[state.blockers[0]] ?? "What would you like to change or explore next?";
 }

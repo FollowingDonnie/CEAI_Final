@@ -7,13 +7,13 @@ import { seedCatalogue } from "../server/catalogue/seed.js";
 describe("governed catalogue", () => {
   it("contains the research-led launch breadth and validates", () => {
     const parsed = CatalogueBundleSchema.parse(seedCatalogue);
-    expect(parsed.variants).toHaveLength(40);
-    expect(new Set(parsed.variants.map((item) => item.variantId)).size).toBe(40);
+    expect(parsed.variants).toHaveLength(42);
+    expect(new Set(parsed.variants.map((item) => item.variantId)).size).toBe(42);
   });
 
   it("round trips through Sheet-ready tabs", () => {
     const rebuilt = sheetTablesToBundle(bundleToSheetTables(seedCatalogue));
-    expect(rebuilt.variants).toHaveLength(40);
+    expect(rebuilt.variants).toHaveLength(42);
     expect(rebuilt.compatibility).toHaveLength(seedCatalogue.compatibility.length);
     expect(rebuilt.variants.find((item) => item.sku === "NS-H30-G2")?.geometry.heightMm).toBe(2200);
   });

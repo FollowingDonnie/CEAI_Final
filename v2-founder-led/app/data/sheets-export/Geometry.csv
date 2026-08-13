@@ -9,6 +9,8 @@ geometry-p60-power-rack-premium,p60-power-rack-premium,rectangle,1500,2150,2380,
 geometry-f20-folding-rack-compact,f20-folding-rack-compact,rectangle,1320,610,2180,2420,2250,2180,north_west,length_on_z,geo-2026-08
 geometry-f30-folding-rack-pro,f30-folding-rack-pro,rectangle,1380,780,2300,2480,2450,2300,north_west,length_on_z,geo-2026-08
 geometry-a10-dip-attachment,a10-dip-attachment,rectangle,650,520,250,650,520,250,north_west,length_on_z,geo-2026-08
+geometry-a08-j-hooks,a08-j-hooks,rectangle,120,180,220,120,180,220,north_west,length_on_z,geo-2026-08
+geometry-a32-gym-rings,a32-gym-rings,rectangle,500,280,1800,1800,1800,2300,north_west,length_on_z,geo-2026-08
 geometry-a12-spotter-arms,a12-spotter-arms,rectangle,160,650,220,160,650,220,north_west,length_on_z,geo-2026-08
 geometry-a14-safety-straps,a14-safety-straps,rectangle,80,900,80,80,900,80,north_west,length_on_z,geo-2026-08
 geometry-a16-landmine,a16-landmine,rectangle,180,420,160,1500,1800,160,north_west,length_on_z,geo-2026-08

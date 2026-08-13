@@ -9,6 +9,8 @@ interface-p60-power-rack-premium,p60-power-rack-premium,host,northstar-75,75,17,
 interface-f20-folding-rack-compact,f20-folding-rack-compact,host,northstar-75,75,17,M16,16,50-mm,"[""front"",""side"",""crossmember""]",600,G2
 interface-f30-folding-rack-pro,f30-folding-rack-pro,host,northstar-75,75,17,M16,16,50-mm,"[""front"",""side"",""crossmember""]",600,G2
 interface-a10-dip-attachment,a10-dip-attachment,attachment,northstar-75,75,17,M16,16,50-mm,"[""front"",""side""]",,G2
+interface-a08-j-hooks,a08-j-hooks,attachment,northstar-75,75,17,M16,16,50-mm,"[""front"",""side""]",,G2
+interface-a32-gym-rings,a32-gym-rings,attachment,northstar-75,75,17,M16,16,50-mm,"[""crossmember""]",,G2
 interface-a12-spotter-arms,a12-spotter-arms,attachment,northstar-75,75,17,M16,16,50-mm,"[""front"",""side""]",,G2
 interface-a14-safety-straps,a14-safety-straps,attachment,northstar-75,75,17,M16,16,50-mm,"[""front"",""rear""]",,G2
 interface-a16-landmine,a16-landmine,attachment,northstar-75,75,17,M16,16,50-mm,"[""base""]",,G2

@@ -21,9 +21,11 @@ export function getBlockers(state: PlanState): string[] {
   if (state.requirements.room.widthMm.value === null) blockers.push("room.widthMm");
   if (state.requirements.room.lengthMm.value === null) blockers.push("room.lengthMm");
   if (state.requirements.room.heightMm.value === null) blockers.push("room.heightMm");
-  if (!state.requirements.goals.value?.length) blockers.push("goals");
-  if (!state.requirements.experience.value) blockers.push("experience");
-  if (state.requirements.budgetCents.value === null) blockers.push("budgetCents");
+  if (state.journeyType.value !== "upgrade") {
+    if (!state.requirements.goals.value?.length) blockers.push("goals");
+    if (!state.requirements.experience.value) blockers.push("experience");
+    if (state.requirements.budgetCents.value === null) blockers.push("budgetCents");
+  }
   return blockers;
 }
 
