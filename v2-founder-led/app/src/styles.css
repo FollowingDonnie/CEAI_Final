@@ -66,6 +66,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .equipment-owned.attention { background: #eef9f6; box-shadow: inset 4px 0 0 var(--teal); }
 .control-prompt { display: flex; align-items: center; gap: 6px; color: var(--teal-dark); font-size: 11px; font-weight: 800; margin: 0 0 10px; }
 .section-help, .equipment-list-hint { color: var(--muted); font-size: 11px; line-height: 1.4; margin: 0 0 9px; }
+.choice-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.choice-grid button { min-height: 34px; border: 1px solid #a7bab6; border-radius: 4px; background: #fff; color: var(--teal-dark); padding: 6px 10px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; line-height: 1.2; }
+.choice-grid button:hover:not(:disabled) { border-color: var(--teal); background: #e6f3f1; }
+.choice-grid button.active { border-color: var(--teal); background: var(--teal); color: #fff; box-shadow: inset 0 -2px var(--teal-dark); }
+.choice-grid button:disabled { cursor: not-allowed; opacity: .52; }
 .upgrade-choices button { min-height: 34px; }
 .plan-rationale { display: grid; grid-template-columns: 20px 1fr; gap: 8px; padding: 11px 14px; background: #f4f8f7; border-bottom: 1px solid var(--line); color: var(--teal-dark); }
 .plan-rationale span, .plan-rationale small { display: block; }.plan-rationale small { margin-top: 4px; color: var(--muted); line-height: 1.4; }
