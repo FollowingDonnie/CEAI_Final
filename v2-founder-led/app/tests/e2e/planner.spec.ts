@@ -89,6 +89,8 @@ test("Mara refines a checked lifting plan one accessory at a time", async ({ pag
   await page.goto("/");
   await fillReadyStrengthPlan(page, "new_space", "5000");
   await expect(page.locator(".equipment-row").filter({ hasText: "J-Hook" })).toBeVisible();
+  await expect(page.getByText(/included a compatible pair of J-hooks/)).toBeVisible();
+  await page.getByRole("button", { name: "Continue to safety options" }).click();
   await Promise.all([
     page.waitForResponse((response) => response.request().method() === "POST" && response.url().includes("/items/recommended") && response.ok()),
     page.getByRole("button", { name: "Add spotter arms" }).click(),

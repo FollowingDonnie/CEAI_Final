@@ -74,8 +74,8 @@ export function ChatPane({ state, catalogue, messages, busy, thinkingLabel, pend
               <p>{refinement.prompt}</p>
             </div>
             <div className="quick-choices" aria-label="Optional plan refinement">
-              <button type="button" onClick={() => onAddRefinement(refinement.query, refinement.acceptMessage)}>{refinement.acceptLabel}</button>
-              <button type="button" onClick={() => onSkipRefinement(refinement.skipMessage)}>Not now</button>
+              <button type="button" onClick={() => refinement.acknowledgeOnly ? onSkipRefinement(refinement.acceptMessage) : onAddRefinement(refinement.query, refinement.acceptMessage)}>{refinement.acceptLabel}</button>
+              {!refinement.acknowledgeOnly && <button type="button" onClick={() => onSkipRefinement(refinement.skipMessage)}>Not now</button>}
             </div>
           </div>
         )}
@@ -157,6 +157,7 @@ interface RefinementStep {
   acceptLabel: string;
   acceptMessage: string;
   skipMessage: string;
+  acknowledgeOnly?: boolean;
 }
 
 function postBuildRefinement(state: PlanState, catalogue: Variant[], messages: ChatMessage[]): RefinementStep | null {
@@ -167,13 +168,26 @@ function postBuildRefinement(state: PlanState, catalogue: Variant[], messages: C
   const hasBarbell = selected.some((item) => item.category === "barbell");
   const hasPlates = selected.some((item) => item.category === "plates");
   const rack = selected.find((item) => item.category === "rack");
+  const hasJHooks = selected.some((item) => item.variantId === "a08-j-hooks");
+  const jHooksExplained = userReplies.some((text) => /included j-hooks/.test(text));
   const hasSafetySupport = selected.some((item) => ["a12-spotter-arms", "a14-safety-straps"].includes(item.variantId));
   const safetyHandled = hasSafetySupport || userReplies.some((text) => /(?:add|no|skip|not now).*spotter/.test(text));
+
+  if (hasRack && hasBarbell && hasJHooks && !jHooksExplained) {
+    return {
+      prompt: "I've included a compatible pair of J-hooks. They support the bar on the rack and are essential for this barbell setup. Ready to look at the next rack safety option?",
+      query: "",
+      acceptLabel: "Continue to safety options",
+      acceptMessage: "I understand the included J-hooks. Continue to rack safety options.",
+      skipMessage: "",
+      acknowledgeOnly: true,
+    };
+  }
 
   const spotterHosts = new Set(["h30-half-rack-entry", "h40-half-rack-pro", "p40-power-rack-compact", "p50-power-rack-standard", "f20-folding-rack-compact", "f30-folding-rack-pro"]);
   if (hasRack && hasBarbell && rack && spotterHosts.has(rack.variantId) && !safetyHandled) {
     return {
-      prompt: "Your rack, governed J-hooks and barbell setup are ready. Would you like me to add compatible spotter arms and update the room and quote?",
+      prompt: "With the bar supported on the included J-hooks, would you like me to add compatible spotter arms and update the room and quote?",
       query: "compatible spotter arms",
       acceptLabel: "Add spotter arms",
       acceptMessage: "Yes, add compatible spotter arms to the plan.",

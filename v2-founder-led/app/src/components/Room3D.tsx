@@ -64,7 +64,7 @@ export function Room3D({ state, catalogue, selectedId, onSelect, onReturn2D }: P
       scene.add(object); selectable.push(object);
     }
     for (const item of deriveVisualInventory(state, catalogue)) {
-      const object = visualInventoryObject(item, selectedId === item.variant.variantId);
+      const object = visualInventoryObject(item, selectedId === item.variant.variantId, catalogue);
       object.userData.variantId = item.variant.variantId;
       object.traverse((child) => { child.userData.variantId = item.variant.variantId; });
       scene.add(object); selectable.push(object);
@@ -129,10 +129,16 @@ function equipmentObject(variant: Variant, placement: Placement, selected: boole
   const colour = selected ? "#de674b" : categoryColour[variant.category];
   if (variant.category === "rack") {
     const upright = .055; const y = height / 2;
-    [[upright, y, upright], [width - upright, y, upright], [upright, y, depth - upright], [width - upright, y, depth - upright]].forEach(([x, py, z]) => { const post = box(.06, height, .06, colour, .68); post.position.set(x, py, z); group.add(post); });
-    const topFront = box(width, .055, .055, colour, .68); topFront.position.set(width / 2, height - .04, .04); group.add(topFront);
-    const topRear = topFront.clone(); topRear.position.z = depth - .04; group.add(topRear);
-    const side = box(.055, .055, depth, colour, .68); side.position.set(.04, height - .04, depth / 2); group.add(side); const side2 = side.clone(); side2.position.x = width - .04; group.add(side2);
+    const twoPost = ["s-series", "f-series"].includes(variant.familyId);
+    const postPositions = twoPost
+      ? [[upright, y, depth - upright], [width - upright, y, depth - upright]]
+      : [[upright, y, upright], [width - upright, y, upright], [upright, y, depth - upright], [width - upright, y, depth - upright]];
+    postPositions.forEach(([x, py, z]) => { const post = box(.06, height, .06, colour, .68); post.position.set(x, py, z); group.add(post); });
+    const topRear = box(width, .055, .055, colour, .68); topRear.position.set(width / 2, height - .04, depth - .04); group.add(topRear);
+    if (!twoPost) {
+      const topFront = topRear.clone(); topFront.position.z = .04; group.add(topFront);
+      const side = box(.055, .055, depth, colour, .68); side.position.set(.04, height - .04, depth / 2); group.add(side); const side2 = side.clone(); side2.position.x = width - .04; group.add(side2);
+    }
   } else if (variant.category === "bench") {
     const pad = box(width * .72, .11, depth * .92, colour); pad.position.set(width / 2, height * .82, depth / 2); group.add(pad);
     const frame = box(.08, height * .72, depth * .65, "#313a3c", .55); frame.position.set(width / 2, height * .38, depth / 2); group.add(frame);
@@ -148,8 +154,18 @@ function equipmentObject(variant: Variant, placement: Placement, selected: boole
   } else if (["dumbbells", "kettlebell"].includes(variant.category)) {
     for (let index = 0; index < 4; index += 1) { const weight = box(width * .17, Math.min(.28, height), depth * .24, colour, .45); weight.position.set(width * (.18 + index * .21), Math.min(.16, height / 2), depth / 2); group.add(weight); }
   } else if (variant.category === "storage") {
-    const frame = box(width, height, depth, colour, .35); group.add(frame); frame.position.set(width / 2, height / 2, depth / 2);
-    const cut = box(width * .86, height * .72, depth * 1.02, "#f7f9f8"); cut.position.set(width / 2, height * .53, depth / 2); group.add(cut);
+    if (variant.variantId === "st10-storage-vertical") {
+      const baseX = box(width * .92, .06, .09, "#30393b", .6); baseX.position.set(width / 2, .03, depth / 2); group.add(baseX);
+      const baseZ = box(.09, .06, depth * .92, "#30393b", .6); baseZ.position.set(width / 2, .03, depth / 2); group.add(baseZ);
+      const upright = box(.09, height * .9, .09, colour, .68); upright.position.set(width / 2, height * .45 + .05, depth / 2); group.add(upright);
+      for (const y of [.55, .88, 1.16]) for (const side of [-1, 1]) {
+        const peg = new THREE.Mesh(new THREE.CylinderGeometry(.024, .024, width * .36, 16), new THREE.MeshStandardMaterial({ color: colour, roughness: .36, metalness: .7 }));
+        peg.rotation.z = Math.PI / 2; peg.position.set(width / 2 + side * width * .2, Math.min(y, height * .84), depth / 2); group.add(peg);
+      }
+    } else {
+      for (const x of [.045, width - .045]) for (const z of [.045, depth - .045]) { const post = box(.06, height, .06, colour, .55); post.position.set(x, height / 2, z); group.add(post); }
+      for (const y of [.08, height * .52, height - .08]) { const shelf = box(width, .06, depth, colour, .4); shelf.position.set(width / 2, y, depth / 2); group.add(shelf); }
+    }
   } else {
     const body = box(width, Math.max(.04, Math.min(height, .3)), depth, colour); body.position.set(width / 2, Math.max(.02, Math.min(height, .3) / 2), depth / 2); group.add(body);
   }
@@ -157,11 +173,15 @@ function equipmentObject(variant: Variant, placement: Placement, selected: boole
   return group;
 }
 
-function visualInventoryObject(item: VisualInventoryItem, selected: boolean) {
+function visualInventoryObject(item: VisualInventoryItem, selected: boolean, catalogue: Variant[]) {
   const group = new THREE.Group();
   const colour = selected ? "#de674b" : categoryColour[item.variant.category];
   const x = item.xMm / 1000;
   const z = item.zMm / 1000;
+  const parent = item.parentVariantId ? catalogue.find((variant) => variant.variantId === item.parentVariantId) : undefined;
+  const parentRotated = item.rotationDeg === 90;
+  const parentWidth = parent ? (parentRotated ? parent.geometry.lengthMm : parent.geometry.widthMm) / 1000 : 0;
+  const parentDepth = parent ? (parentRotated ? parent.geometry.widthMm : parent.geometry.lengthMm) / 1000 : 0;
 
   if (item.mode === "flooring") {
     const width = item.variant.geometry.widthMm / 1000;
@@ -223,8 +243,17 @@ function visualInventoryObject(item: VisualInventoryItem, selected: boolean) {
         const strap = box(.012, .72, .012, "#30393b", .5); strap.position.set(side * .22, 1.58, .12); group.add(strap);
         const ring = new THREE.Mesh(new THREE.TorusGeometry(.09, .013, 10, 28), new THREE.MeshStandardMaterial({ color: colour, roughness: .62 })); ring.position.set(side * .22, 1.18, .12); group.add(ring);
       }
-    } else if (item.variant.variantId === "a12-spotter-arms") {
-      for (const side of [-1, 1]) { const arm = box(.07, .09, .62, colour, .65); arm.position.set(side * .42, .82, .28); group.add(arm); }
+    } else if (item.variant.variantId === "a12-spotter-arms" && parent?.category === "rack") {
+      const fourPost = ["h-series", "p-series"].includes(parent.familyId);
+      const inset = .055;
+      const armDepth = fourPost ? Math.max(.3, parentDepth - inset * 2) : Math.min(.65, Math.max(.45, parentDepth * .72));
+      const centreZ = fourPost ? parentDepth / 2 : Math.max(inset + armDepth / 2, parentDepth - inset - armDepth / 2);
+      for (const xPosition of [inset, parentWidth - inset]) {
+        const arm = box(.075, .09, armDepth, colour, .65); arm.position.set(xPosition, .82, centreZ); group.add(arm);
+        const lip = box(.075, .16, .08, colour, .65); lip.position.set(xPosition, .88, fourPost ? inset : Math.max(inset, centreZ - armDepth / 2)); group.add(lip);
+      }
+      group.position.set(x, 0, z);
+      return group;
     } else if (item.variant.variantId === "a10-dip-attachment") {
       for (const side of [-1, 1]) { const handle = box(.04, .04, .52, colour, .7); handle.position.set(side * .24, 1.15, .3); group.add(handle); }
     } else {
