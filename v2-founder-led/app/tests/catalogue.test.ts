@@ -3,8 +3,26 @@ import { CatalogueBundleSchema } from "../shared/types.js";
 import { CatalogueRepository } from "../server/catalogue/repository.js";
 import { bundleToSheetTables, sheetTablesToBundle, toCsv, type SheetTab } from "../server/catalogue/sheet-format.js";
 import { seedCatalogue } from "../server/catalogue/seed.js";
+import { assessPricePlausibility } from "../server/domain/price-anomaly.js";
 
 describe("governed catalogue", () => {
+  it("flags an extreme category-relative price without inventing a correction", () => {
+    const snapshot = new CatalogueRepository().getSnapshot();
+    const rower = snapshot.variants.find((item) => item.sku === "NS-C10")!;
+    const changed = { ...rower, priceCents: 487_023_300 };
+    const testSnapshot = { ...snapshot, variants: snapshot.variants.map((item) => item.variantId === rower.variantId ? changed : item) };
+    const assessment = assessPricePlausibility(testSnapshot, changed);
+    expect(assessment.needsHumanReview).toBe(true);
+    expect(assessment.status).toBe("needs_human_review");
+    expect(assessment.categoryMedianCents).toBe(64_900);
+    expect(changed.priceCents).toBe(487_023_300);
+  });
+
+  it("does not flag the rower's normal governed price", () => {
+    const snapshot = new CatalogueRepository().getSnapshot();
+    const rower = snapshot.variants.find((item) => item.sku === "NS-C10")!;
+    expect(assessPricePlausibility(snapshot, rower).needsHumanReview).toBe(false);
+  });
   it("contains the research-led launch breadth and validates", () => {
     const parsed = CatalogueBundleSchema.parse(seedCatalogue);
     expect(parsed.variants).toHaveLength(42);

@@ -9,6 +9,7 @@ import { generateLayout } from "../domain/layout.js";
 import { calculateQuote } from "../domain/quote.js";
 import { addBestMatchingProduct, buildRecommendation } from "../domain/recommendation.js";
 import { searchCatalogue } from "../domain/search.js";
+import { assessPricePlausibility } from "../domain/price-anomaly.js";
 import { applyRequirementPatches, type PlanStore } from "../domain/state.js";
 import { extractRequirementPatches, fallbackReply } from "./fallback.js";
 
@@ -109,6 +110,7 @@ Constraints:
 - Do not present a generic menu of priorities. Ask a contextual trade-off question only when the current options genuinely require one.
 - Treat rough early answers as useful. Let the customer refine them later.
 - Never independently calculate or claim room fit, compatibility, stock, price, totals, declared loads, anchoring or validation.
+- When a catalogue result has priceAssessment.needsHumanReview true, report the exact sourced price, say it looks unusually high compared with similar items, and recommend confirming it with Northstar staff before purchase. Never silently correct or invent a replacement value.
 - Recommend purchasable equipment only from the current catalogue. Do not invent used, secondhand or outside-retailer options.
 - When the customer asks to add or include equipment, call add_best_matching_product immediately. Do not ask them to confirm the same action.
 - Never say an item was added unless add_best_matching_product returns ok true.
@@ -212,9 +214,9 @@ export class MaraOrchestrator {
 
   private async execute(name: string, args: unknown, planId: string): Promise<unknown> {
     const state = this.plans.get(planId);
-    const snapshot = await this.catalogue.refresh();
     const dataFreeOperations = new Set(["get_plan_state", "get_next_required_fields", "update_customer_requirements"]);
-    if (snapshot.freshness === "unavailable" && !dataFreeOperations.has(name)) {
+    const snapshot = dataFreeOperations.has(name) ? this.catalogue.getSnapshot() : await this.catalogue.refresh(true);
+    if (snapshot.freshness !== "current" && !dataFreeOperations.has(name)) {
       return { ok: false, code: "CATALOGUE_UNAVAILABLE", message: "Current equipment details could not be checked. Preserve the brief and suggest retrying." };
     }
     switch (name) {
@@ -227,7 +229,10 @@ export class MaraOrchestrator {
       }
       case "search_live_catalogue": {
         const parsed = z.object({ query: z.string(), category: z.string().nullable() }).parse(args);
-        return { snapshotId: snapshot.snapshotId, results: searchCatalogue(snapshot, { text: parsed.query, categories: parsed.category ? [parsed.category as never] : undefined }).slice(0, 6) };
+        const results = searchCatalogue(snapshot, { text: parsed.query, categories: parsed.category ? [parsed.category as never] : undefined })
+          .slice(0, 6)
+          .map((item) => ({ ...item, priceAssessment: assessPricePlausibility(snapshot, item) }));
+        return { snapshotId: snapshot.snapshotId, observedAt: snapshot.observedAt, results };
       }
       case "add_best_matching_product": {
         const parsed = z.object({ query: z.string().trim().min(2).max(200) }).parse(args);
@@ -238,7 +243,9 @@ export class MaraOrchestrator {
       }
       case "compare_products": {
         const parsed = z.object({ variant_ids: z.array(z.string()).min(1).max(4) }).parse(args);
-        return snapshot.variants.filter((item) => parsed.variant_ids.includes(item.variantId));
+        return snapshot.variants
+          .filter((item) => parsed.variant_ids.includes(item.variantId))
+          .map((item) => ({ ...item, priceAssessment: assessPricePlausibility(snapshot, item) }));
       }
       case "check_attachment_compatibility": {
         const parsed = z.object({ host_variant_id: z.string(), attachment_variant_id: z.string() }).parse(args);

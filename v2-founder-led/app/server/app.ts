@@ -49,8 +49,8 @@ export function createApp(options: AppOptions = {}) {
   const app = express();
   const catalogue = options.catalogue ?? new CatalogueRepository({
     sheetId: process.env.GOOGLE_SHEET_ID,
-    refreshSeconds: Number(process.env.CATALOGUE_REFRESH_SECONDS ?? 60),
-    maxStaleMinutes: Number(process.env.CATALOGUE_MAX_STALE_MINUTES ?? 30),
+    refreshSeconds: Number(process.env.CATALOGUE_REFRESH_SECONDS ?? 0),
+    maxStaleMinutes: Number(process.env.CATALOGUE_MAX_STALE_MINUTES ?? 0),
   });
   const plans = new PlanStore();
   const mara = new MaraOrchestrator(plans, catalogue, options.apiKey ?? process.env.OPENAI_API_KEY, options.model ?? process.env.OPENAI_MODEL ?? "gpt-5.6-sol");
