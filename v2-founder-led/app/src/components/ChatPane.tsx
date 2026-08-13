@@ -8,13 +8,16 @@ interface Props {
   messages: ChatMessage[];
   busy: boolean;
   onSend: (message: string) => Promise<void>;
+  thinkingLabel: string | null;
+  onBuild: () => Promise<void>;
 }
 
-export function ChatPane({ state, catalogue, messages, busy, onSend }: Props) {
+export function ChatPane({ state, catalogue, messages, busy, thinkingLabel, onSend, onBuild }: Props) {
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const choices = quickChoices(state, catalogue);
+  const canBuild = !state.blockers.length && ["empty", "stale"].includes(state.recommendation.status);
   useEffect(() => {
     const container = messagesRef.current;
     if (container) container.scrollTop = container.scrollHeight;
@@ -41,6 +44,12 @@ export function ChatPane({ state, catalogue, messages, busy, onSend }: Props) {
             <p>{message.text}</p>
           </div>
         ))}
+        {!busy && canBuild && (
+          <div className="chat-plan-action">
+            <span>That is enough for a useful first option. You can refine it afterwards.</span>
+            <button className="primary-button" type="button" onClick={onBuild}>{state.recommendation.status === "empty" ? "Build with current info" : "Update plan"}</button>
+          </div>
+        )}
         {!busy && choices.length > 0 && (
           <div className="quick-choices" aria-label="Suggested replies">
             {choices.map((choice) => (
@@ -48,10 +57,10 @@ export function ChatPane({ state, catalogue, messages, busy, onSend }: Props) {
             ))}
           </div>
         )}
-        {busy && (
+        {busy && thinkingLabel && (
           <div className="message assistant thinking" role="status">
             <Sparkles size={15} aria-hidden="true" />
-            <span>Mara is checking your plan</span><span className="typing-dots" aria-hidden="true"><i /><i /><i /></span>
+            <span>{thinkingLabel}</span><span className="typing-dots" aria-hidden="true"><i /><i /><i /></span>
           </div>
         )}
         <div ref={endRef} />
@@ -93,12 +102,14 @@ function quickChoices(state: PlanState, catalogue: Variant[]): QuickChoice[] {
     const prices = catalogue.filter((item) => item.active && item.category === category && item.priceCents != null).map((item) => item.priceCents as number).sort((a, b) => a - b);
     return total + (prices[Math.floor((prices.length - 1) * position)] ?? 0);
   }, 0);
-  const euro = [packageAt(0), packageAt(0.5), packageAt(0.85)]
-    .map((cents) => Math.max(500, Math.ceil(cents / 25000) * 250))
-    .filter((value, index, values) => values.indexOf(value) === index);
-  const names = ["Starter", "Balanced", "More flexible"];
+  const rounded = (cents: number) => Math.max(500, Math.ceil(cents / 25000) * 250);
+  const starter = rounded(packageAt(0));
+  const tierOne = Math.max(starter + 750, rounded(packageAt(0.5)));
+  const tierTwo = Math.max(tierOne + 750, rounded(packageAt(0.85)));
+  const euro = [starter, tierOne, tierTwo];
+  const names = ["Starter", "Tier 1", "Tier 2"];
   return [
     ...euro.map((value, index) => ({ label: names[index] + " - up to EUR " + value.toLocaleString("en-IE"), message: "My maximum budget is EUR " + value + "." })),
-    { label: "Not sure yet", message: "I am not sure about budget yet. Please help me choose a sensible range." },
+    { label: "Help me choose", message: "I am not sure about budget yet. Please help me choose a sensible range." },
   ];
 }

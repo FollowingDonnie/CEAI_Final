@@ -28,10 +28,8 @@ async function fillReadyStrengthPlan(page: Page, journey: "new_space" | "upgrade
   await updateRequirement(() => room.getByRole("spinbutton", { name: /width/i }).fill("3"));
   await updateRequirement(() => room.getByRole("spinbutton", { name: /height/i }).fill("2.4"));
   await expect(page.getByTestId("planner-2d")).toBeVisible();
-  await updateRequirement(() => page.getByRole("button", { name: "No fixed obstruction" }).click());
-  await updateRequirement(() => page.getByRole("button", { name: journey === "upgrade" ? "Calisthenics" : "Strength", exact: true }).click());
+  await updateRequirement(() => page.getByRole("button", { name: journey === "upgrade" ? "Gymnastics / open floor" : "Weight lifting", exact: true }).click());
   await updateRequirement(() => page.getByLabel("Experience").selectOption("beginner"));
-  await updateRequirement(() => page.getByRole("button", { name: "Versatility", exact: true }).click());
   await updateRequirement(() => page.getByLabel("Maximum").fill(budget));
   await expect(page.getByText("Ready for a checked plan")).toBeVisible();
   await page.getByRole("button", { name: "Build plan" }).click();

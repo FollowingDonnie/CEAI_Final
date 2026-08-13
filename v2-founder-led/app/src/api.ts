@@ -22,6 +22,7 @@ export const api = {
   chat: (planId: string, expectedVersion: number, message: string) => request<{ state: PlanState; message: ChatMessage; service: string }>(`/api/plans/${planId}/chat`, { method: "POST", body: JSON.stringify({ expectedVersion, message }) }),
   recommend: (planId: string, expectedVersion: number) => request<{ state: PlanState }>(`/api/plans/${planId}/recommend`, { method: "POST", body: JSON.stringify({ expectedVersion }) }),
   addExisting: (planId: string, expectedVersion: number, equipment: Record<string, unknown>) => request<{ state: PlanState }>(`/api/plans/${planId}/existing-equipment`, { method: "POST", body: JSON.stringify({ expectedVersion, equipment }) }),
+  addRecommendedItem: (planId: string, expectedVersion: number, query: string) => request<{ state: PlanState; product: Variant; alreadySelected: boolean }>(`/api/plans/${planId}/items/recommended`, { method: "POST", body: JSON.stringify({ expectedVersion, query }) }),
   addDoor: (planId: string, expectedVersion: number, door: Record<string, unknown>) => request<{ state: PlanState }>(`/api/plans/${planId}/doors`, { method: "POST", body: JSON.stringify({ expectedVersion, door }) }),
   updatePlacement: (planId: string, placementId: string, expectedVersion: number, update: Record<string, unknown>) => request<{ state: PlanState }>(`/api/plans/${planId}/placements/${placementId}`, { method: "POST", body: JSON.stringify({ expectedVersion, ...update }) }),
   removePlacement: (planId: string, placementId: string, expectedVersion: number) => request<{ state: PlanState }>(`/api/plans/${planId}/placements/${placementId}/remove`, { method: "POST", body: JSON.stringify({ expectedVersion }) }),
@@ -29,7 +30,7 @@ export const api = {
   undo: (planId: string, expectedVersion: number) => request<{ state: PlanState }>(`/api/plans/${planId}/undo`, { method: "POST", body: JSON.stringify({ expectedVersion }) }),
   redo: (planId: string, expectedVersion: number) => request<{ state: PlanState }>(`/api/plans/${planId}/redo`, { method: "POST", body: JSON.stringify({ expectedVersion }) }),
   consentBudget: (planId: string, expectedVersion: number, maximumOverrunCents: number) => request<{ state: PlanState }>(`/api/plans/${planId}/budget-consent`, { method: "POST", body: JSON.stringify({ expectedVersion, maximumOverrunCents }) }),
-  getCatalogue: () => request<{ snapshotId: string; freshness: string; observedAt: string; variants: Variant[]; diagnostics: string[] }>("/api/catalogue"),
+  getCatalogue: () => request<{ snapshotId: string; sourceKind: string; freshness: string; observedAt: string; variants: Variant[]; diagnostics: string[] }>("/api/catalogue"),
   refreshCatalogue: () => request<{ snapshotId: string; freshness: string; observedAt: string }>("/api/catalogue/refresh", { method: "POST" }),
   compatibility: (hostVariantId: string, attachmentVariantId: string, selectedItems: string[] = []) => request<Record<string, unknown>>("/api/compatibility", { method: "POST", body: JSON.stringify({ hostVariantId, attachmentVariantId, selectedItems }) }),
 };

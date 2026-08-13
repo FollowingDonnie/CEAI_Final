@@ -1,7 +1,6 @@
-import { Check, DoorOpen, Pencil, Plus, RefreshCw, Ruler, Square, SquareCheckBig, Target, WalletCards } from "lucide-react";
+import { Check, Pencil, Plus, RefreshCw, Ruler, Target, WalletCards } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { PlanState, RequirementPatch, Variant } from "../../shared/types";
-import { metres } from "../utils";
 
 interface Props {
   state: PlanState;
@@ -10,15 +9,17 @@ interface Props {
   onPatch: (patches: RequirementPatch[]) => Promise<void>;
   onRecommend: () => Promise<void>;
   onAddExisting: (equipment: Record<string, unknown>) => Promise<void>;
-  onAddDoor: (door: Record<string, unknown>) => Promise<void>;
 }
 
-const goals = ["strength", "bodybuilding", "cardio", "calisthenics", "general_fitness"];
-const priorities = ["versatility", "open_floor", "free_weights", "cardio", "storage", "cost"];
-const label = (value: string) => value.replaceAll("_", " ").replace(/^./, (character) => character.toUpperCase());
+const trainingFocuses = [
+  { label: "Weight lifting", values: ["strength"] },
+  { label: "Bodybuilding", values: ["bodybuilding"] },
+  { label: "Cardio", values: ["cardio"] },
+  { label: "Gymnastics / open floor", values: ["calisthenics"] },
+  { label: "Hybrid", values: ["strength", "cardio"] },
+];
 
-export function RequirementsEditor({ state, catalogue, busy, onPatch, onRecommend, onAddExisting, onAddDoor }: Props) {
-  const [doorOpen, setDoorOpen] = useState(false);
+export function RequirementsEditor({ state, catalogue, busy, onPatch, onRecommend, onAddExisting }: Props) {
   const [manualOpen, setManualOpen] = useState(false);
   const rackOptions = useMemo(() => catalogue.filter((item) => item.category === "rack"), [catalogue]);
   const existing = state.existingEquipment[0];
@@ -26,10 +27,7 @@ export function RequirementsEditor({ state, catalogue, busy, onPatch, onRecommen
     ? existing.name
     : existing ? catalogue.find((item) => item.variantId === existing.variantId)?.name ?? "Known equipment" : "";
 
-  const toggleArray = (field: "goals" | "priorities", value: string) => {
-    const current = state.requirements[field].value ?? [];
-    return onPatch([{ field, value: current.includes(value) ? current.filter((item) => item !== value) : [...current, value] }]);
-  };
+  const setTrainingFocus = (values: string[]) => onPatch([{ field: "goals", value: values }]);
 
   return (
     <div className="requirements-editor">
@@ -42,27 +40,18 @@ export function RequirementsEditor({ state, catalogue, busy, onPatch, onRecommen
             </label>
           ))}
         </div>
-        <div className="inline-actions">
-          <button className={state.requirements.room.doorConfirmed.value ? "quiet-button confirmed" : "quiet-button"} type="button" aria-pressed={state.requirements.room.doorConfirmed.value === true} onClick={() => onPatch([{ field: "room.doorConfirmed", value: true }])}>{state.requirements.room.doorConfirmed.value ? <SquareCheckBig size={16} /> : <Square size={16} />}No fixed obstruction</button>
-          <button className="quiet-button" type="button" onClick={() => setDoorOpen((open) => !open)}><DoorOpen size={16} />Add door</button>
-        </div>
-        {doorOpen && <DoorForm onSubmit={async (door) => { await onAddDoor(door); setDoorOpen(false); }} />}
       </section>
 
       <section className="inspector-section">
         <div className="section-title"><Target size={17} /><h3>Training</h3></div>
-        <div className="choice-chips" aria-label="Training goals">
-          {goals.map((goal) => <button type="button" className={state.requirements.goals.value?.includes(goal) ? "selected" : ""} onClick={() => toggleArray("goals", goal)} key={goal}>{label(goal)}</button>)}
+        <div className="choice-chips" aria-label="Training focus">
+          {trainingFocuses.map((focus) => <button type="button" className={focus.values.length === state.requirements.goals.value?.length && focus.values.every((goal) => state.requirements.goals.value?.includes(goal)) ? "selected" : ""} onClick={() => setTrainingFocus(focus.values)} key={focus.label}>{focus.label}</button>)}
         </div>
         <label>Experience
           <select value={state.requirements.experience.value ?? ""} onChange={(event) => event.target.value && onPatch([{ field: "experience", value: event.target.value as "beginner" | "some_experience" | "experienced" }])}>
             <option value="">Choose</option><option value="beginner">Beginner</option><option value="some_experience">Some experience</option><option value="experienced">Experienced</option>
           </select>
         </label>
-        <span className="field-label">Main priority</span>
-        <div className="choice-chips compact" aria-label="Planning priorities">
-          {priorities.map((priority) => <button type="button" className={state.requirements.priorities.value?.includes(priority) ? "selected" : ""} onClick={() => toggleArray("priorities", priority)} key={priority}>{label(priority)}</button>)}
-        </div>
       </section>
 
       {state.journeyType.value === "upgrade" && (
@@ -94,10 +83,6 @@ export function RequirementsEditor({ state, catalogue, busy, onPatch, onRecommen
   );
 }
 
-function DoorForm({ onSubmit }: { onSubmit: (door: Record<string, unknown>) => Promise<void> }) {
-  const [wall, setWall] = useState("north"); const [offset, setOffset] = useState(500); const [width, setWidth] = useState(900);
-  return <form className="inline-form" onSubmit={(event) => { event.preventDefault(); onSubmit({ wall, offsetMm: offset, widthMm: width, swing: "inward_left" }); }}><label>Wall<select value={wall} onChange={(event) => setWall(event.target.value)}><option>north</option><option>east</option><option>south</option><option>west</option></select></label><label>From corner<input type="number" value={offset} onChange={(event) => setOffset(Number(event.target.value))} /><small>mm</small></label><label>Width<input type="number" value={width} onChange={(event) => setWidth(Number(event.target.value))} /><small>mm</small></label><button className="quiet-button" type="submit"><Plus size={16} />Add</button></form>;
-}
 
 function ManualEquipmentForm({ onSubmit }: { onSubmit: (item: Record<string, unknown>) => Promise<void> }) {
   const [name, setName] = useState(""); const [width, setWidth] = useState(1200); const [length, setLength] = useState(1200); const [height, setHeight] = useState(2100);

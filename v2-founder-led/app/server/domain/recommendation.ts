@@ -2,6 +2,7 @@ import type { CatalogueSnapshot, PlanState, Variant } from "../../shared/types.j
 import { checkCompatibility } from "./compatibility.js";
 import { generateLayout } from "./layout.js";
 import { calculateQuote } from "./quote.js";
+import { searchCatalogue } from "./search.js";
 
 const price = (item: Variant) => item.priceCents ?? Number.MAX_SAFE_INTEGER;
 
@@ -85,9 +86,10 @@ export function buildRecommendation(state: PlanState, snapshot: CatalogueSnapsho
   next.status = "checking";
   next.catalogueSnapshotId = snapshot.snapshotId;
   next.sourceStatus = { catalogueFreshness: snapshot.freshness, observedAt: snapshot.observedAt, refreshError: snapshot.diagnostics.at(-1) ?? null };
-  if (next.blockers.length || snapshot.freshness === "expired") {
-    next.status = snapshot.freshness === "expired" ? "unavailable" : "collecting";
-    next.recommendation = { ...next.recommendation, status: snapshot.freshness === "expired" ? "unavailable" : "empty" };
+  const catalogueUnavailable = ["expired", "unavailable"].includes(snapshot.freshness);
+  if (next.blockers.length || catalogueUnavailable) {
+    next.status = catalogueUnavailable ? "unavailable" : "collecting";
+    next.recommendation = { ...next.recommendation, status: catalogueUnavailable ? "unavailable" : "empty" };
     next.eventVersion += 1;
     return next;
   }
@@ -96,10 +98,13 @@ export function buildRecommendation(state: PlanState, snapshot: CatalogueSnapsho
   const evaluated = sets.map((ids) => {
     const layout = generateLayout(next, snapshot, ids);
     const quote = calculateQuote(next, snapshot, ids);
-    return { ids, layout, quote };
+    const quality = ids.reduce((total, id) => total + (snapshot.variants.find((item) => item.variantId === id)?.priorityWeight ?? 0), 0);
+    const budget = next.requirements.budgetCents.value;
+    const utilisation = budget && quote.grandTotalCents ? Math.min(1, quote.grandTotalCents / budget) : 0;
+    return { ids, layout, quote, score: quality + (utilisation * 12) };
   });
   const valid = evaluated.filter((item) => item.layout.status === "feasible" && item.quote.status === "current" && item.quote.grandTotalCents != null);
-  const inBudget = valid.filter((item) => item.quote.withinBudget).sort((a, b) => a.quote.grandTotalCents! - b.quote.grandTotalCents!);
+  const inBudget = valid.filter((item) => item.quote.withinBudget).sort((a, b) => b.score - a.score || b.quote.grandTotalCents! - a.quote.grandTotalCents!);
   const overBudget = valid.filter((item) => !item.quote.withinBudget).sort((a, b) => a.quote.grandTotalCents! - b.quote.grandTotalCents!);
   const chosen = inBudget[0] ?? (next.budgetConsent.overrunAllowed ? overBudget.find((item) => (item.quote.overrunCents ?? Infinity) <= (next.budgetConsent.maximumAuthorisedOverrunCents ?? 0)) : undefined);
 
@@ -146,4 +151,71 @@ export function buildRecommendation(state: PlanState, snapshot: CatalogueSnapsho
   next.status = "current";
   next.eventVersion += 1;
   return next;
+}
+
+export type ProductAdditionResult =
+  | { ok: true; state: PlanState; product: Variant; alreadySelected: boolean }
+  | {
+    ok: false;
+    code: "PRODUCT_NOT_FOUND" | "ITEM_DOES_NOT_FIT" | "BUDGET_EXCEEDED";
+    product: Variant | null;
+    projectedTotalCents: number | null;
+    overrunCents: number | null;
+    alternatives: Array<{ variantId: string; name: string; priceCents: number | null }>;
+  };
+
+export function addBestMatchingProduct(state: PlanState, snapshot: CatalogueSnapshot, query: string): ProductAdditionResult {
+  const candidates = searchCatalogue(snapshot, { text: query }).slice(0, 8);
+  if (!candidates.length) {
+    return { ok: false, code: "PRODUCT_NOT_FOUND", product: null, projectedTotalCents: null, overrunCents: null, alternatives: [] };
+  }
+
+  const evaluated = candidates.map((product) => {
+    const ids = [...new Set([...state.selectedItems, product.variantId])];
+    const layout = generateLayout(state, snapshot, ids);
+    const quote = calculateQuote(state, snapshot, ids);
+    return { product, ids, layout, quote };
+  });
+  const fitting = evaluated.filter((item) => item.layout.status === "feasible" && item.quote.status === "current" && item.quote.grandTotalCents != null);
+  const allowed = fitting.find((item) => item.quote.withinBudget || (
+    state.budgetConsent.overrunAllowed
+    && (item.quote.overrunCents ?? Infinity) <= (state.budgetConsent.maximumAuthorisedOverrunCents ?? 0)
+  ));
+
+  if (!allowed) {
+    const leastOver = fitting.sort((a, b) => (a.quote.overrunCents ?? Infinity) - (b.quote.overrunCents ?? Infinity))[0];
+    const first = leastOver ?? evaluated[0];
+    return {
+      ok: false,
+      code: leastOver ? "BUDGET_EXCEEDED" : "ITEM_DOES_NOT_FIT",
+      product: first.product,
+      projectedTotalCents: first.quote.grandTotalCents,
+      overrunCents: first.quote.overrunCents,
+      alternatives: fitting.slice(0, 3).map((item) => ({ variantId: item.product.variantId, name: item.product.name, priceCents: item.product.priceCents })),
+    };
+  }
+
+  const alreadySelected = state.selectedItems.includes(allowed.product.variantId);
+  if (alreadySelected) return { ok: true, state, product: allowed.product, alreadySelected: true };
+
+  const next = structuredClone(state);
+  next.selectedItems = allowed.ids;
+  next.placements = allowed.layout.placements;
+  next.quote = allowed.quote;
+  next.catalogueSnapshotId = snapshot.snapshotId;
+  next.sourceStatus = { catalogueFreshness: snapshot.freshness, observedAt: snapshot.observedAt, refreshError: snapshot.diagnostics.at(-1) ?? null };
+  next.recommendation = {
+    ...next.recommendation,
+    status: "current",
+    candidateIds: allowed.ids,
+    explanationFacts: [
+      ...next.recommendation.explanationFacts.filter((fact) => !fact.startsWith("Added ")),
+      `Added ${allowed.product.name}; room placement and the complete known quote were recalculated.`,
+    ],
+    requirementsVersion: next.requirementsVersion,
+    catalogueSnapshotId: snapshot.snapshotId,
+  };
+  next.status = "current";
+  next.eventVersion += 1;
+  return { ok: true, state: next, product: allowed.product, alreadySelected: false };
 }

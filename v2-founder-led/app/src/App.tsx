@@ -12,6 +12,7 @@ import { checkedTime, metres, statusLabel, variantById } from "./utils";
 
 type InspectorTab = "plan" | "quote" | "details";
 type MobileTab = "chat" | "plan" | "room" | "quote";
+type Activity = "startup" | "chat" | "build" | "catalogue" | null;
 
 export default function App() {
 const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ default: module.Room3D })));
@@ -20,6 +21,8 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [catalogue, setCatalogue] = useState<Variant[]>([]);
   const [busy, setBusy] = useState(false);
+  const [activity, setActivity] = useState<Activity>(null);
+  const [bootSlow, setBootSlow] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("plan");
@@ -30,15 +33,21 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
   const patchQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const initialise = useCallback(async () => {
-    setBusy(true); setError(null);
+    setBusy(true); setActivity("startup"); setBootSlow(false); setError(null);
     try {
       const [created, items] = await Promise.all([api.createPlan(), api.getCatalogue()]);
       stateRef.current = created.state; setState(created.state); setMessages(created.messages); setCatalogue(items.variants); setNotice("A new anonymous plan is ready.");
     } catch { setError("Northstar could not start a new plan. Please retry."); }
-    finally { setBusy(false); }
+    finally { setBusy(false); setActivity(null); }
   }, []);
 
   useEffect(() => { initialise(); }, [initialise]);
+
+  useEffect(() => {
+    if (state || !busy) return;
+    const timer = window.setTimeout(() => setBootSlow(true), 6000);
+    return () => window.clearTimeout(timer);
+  }, [state, busy]);
 
   const handleApiError = (value: unknown) => {
     if (value instanceof ApiError && value.status === 409 && value.body.state) {
@@ -62,21 +71,21 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
   };
 
   const send = async (message: string) => {
-    if (!state) return; setBusy(true); setError(null);
+    if (!state) return; setBusy(true); setActivity("chat"); setError(null);
     const user: ChatMessage = { id: crypto.randomUUID(), role: "user", text: message, createdAt: new Date().toISOString() };
     setMessages((current) => [...current, user]);
     try {
       const result = await api.chat(state.planId, state.eventVersion, message); stateRef.current = result.state; setState(result.state); setMessages((current) => [...current, result.message]);
       if (result.state.status === "current") { setMobileTab("room"); setInspectorTab("plan"); }
     } catch (value) { setMessages((current) => current.filter((item) => item.id !== user.id)); handleApiError(value); }
-    finally { setBusy(false); }
+    finally { setBusy(false); setActivity(null); }
   };
 
   const recommend = async () => {
-    if (!state) return; setBusy(true); setError(null); setNotice("Checking current products, room layouts and the complete quote.");
+    if (!state) return; setBusy(true); setActivity("build"); setError(null); setNotice("Checking current products, room layouts and the complete quote.");
     try { const result = await api.recommend(state.planId, state.eventVersion); stateRef.current = result.state; setState(result.state); if (result.state.selectedItems[0]) setSelectedId(result.state.selectedItems[0]); setNotice(result.state.status === "current" ? "Checked plan ready." : "The current constraints need review."); }
     catch (value) { handleApiError(value); }
-    finally { setBusy(false); }
+    finally { setBusy(false); setActivity(null); }
   };
 
   const stateAction = async (action: () => Promise<{ state: PlanState }>, success = "Plan updated.") => {
@@ -86,10 +95,10 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
   };
 
   const refreshCatalogue = async () => {
-    setBusy(true); setError(null);
+    setBusy(true); setActivity("catalogue"); setError(null);
     try { const refreshed = await api.refreshCatalogue(); const items = await api.getCatalogue(); setCatalogue(items.variants); setState((current) => current ? { ...current, catalogueSnapshotId: refreshed.snapshotId, sourceStatus: { ...current.sourceStatus, catalogueFreshness: refreshed.freshness as PlanState["sourceStatus"]["catalogueFreshness"], observedAt: refreshed.observedAt } } : current); setNotice(`Current catalogue checked ${checkedTime(refreshed.observedAt)}.`); }
     catch { setError("Current catalogue details could not be refreshed. Existing planning values have been kept with their checked time."); }
-    finally { setBusy(false); }
+    finally { setBusy(false); setActivity(null); }
   };
 
   const selectItem = useCallback((id: string | null) => { setSelectedId(id); if (id) setInspectorTab("details"); }, []);
@@ -97,7 +106,7 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
   const consentBudget = async (maximumOverrunCents: number) => {
     const current = stateRef.current;
     if (!current) return;
-    setBusy(true); setError(null);
+    setBusy(true); setActivity("build"); setError(null);
     try {
       const consented = await api.consentBudget(current.planId, current.eventVersion, maximumOverrunCents);
       stateRef.current = consented.state; setState(consented.state);
@@ -105,11 +114,15 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
       stateRef.current = rebuilt.state; setState(rebuilt.state);
       setNotice(`The exact EUR ${(maximumOverrunCents / 100).toFixed(2)} budget exception was recorded and checked.`);
     } catch (value) { handleApiError(value); }
-    finally { setBusy(false); }
+    finally { setBusy(false); setActivity(null); }
   };
 
 
-  if (!state) return <main className="boot-screen"><div className="brand-mark large"><span /><span /><span /></div><h1>Northstar</h1><p>{error ?? "Preparing your planning workspace..."}</p><button className="primary-button" onClick={initialise} disabled={busy}><RefreshCw className={busy ? "spin" : ""} size={18} />Retry</button></main>;
+  if (!state) return <main className="boot-screen"><div className="brand-mark large"><span /><span /><span /></div><h1>Northstar</h1><p>{error ?? "Preparing your planning workspace..."}</p>{!error && <><div className="boot-progress" role="progressbar" aria-label="Preparing planning workspace"><span /></div><small>{bootSlow ? "The planning service is starting. The first visit can take up to a minute." : "Connecting to current equipment information..."}</small></>}{error && <button className="primary-button" onClick={initialise}><RefreshCw size={18} />Retry</button>}</main>;
+  const thinkingLabel = activity === "chat"
+    ? "Mara is typing..."
+    : activity === "build" ? "Mara is arranging your space..." : null;
+
 
   return <main className="app-shell">
     <header className="topbar">
@@ -128,7 +141,7 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
     {error && <div className="global-error" role="alert">{error}<button onClick={() => setError(null)}>Dismiss</button></div>}
 
     <div className={`workspace mobile-${mobileTab}`}>
-      <ChatPane state={state} catalogue={catalogue} messages={messages} busy={busy} onSend={send} />
+      <ChatPane state={state} catalogue={catalogue} messages={messages} busy={busy} thinkingLabel={thinkingLabel} onSend={send} onBuild={recommend} />
       <section className="room-workspace" aria-label="Room workspace">
         <header className="workspace-header"><div className="view-control" aria-label="Room view"><button className={roomView === "2d" ? "active" : ""} onClick={() => setRoomView("2d")}>2D plan</button><button className={roomView === "3d" ? "active" : ""} onClick={() => setRoomView("3d")}>3D room</button></div><button className="plan-drawer-button" onClick={() => setMobileTab("plan")}><PanelRight size={17} />Plan and quote</button></header>
         <div className="room-surface" role="region" aria-label="Interactive room plan" tabIndex={0}>
@@ -138,7 +151,7 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
       <aside className="plan-inspector" aria-label="Plan inspector">
         <div className="inspector-tabs" role="tablist"><button role="tab" aria-selected={inspectorTab === "plan"} className={inspectorTab === "plan" ? "active" : ""} onClick={() => setInspectorTab("plan")}>Plan</button><button role="tab" aria-selected={inspectorTab === "quote"} className={inspectorTab === "quote" ? "active" : ""} onClick={() => setInspectorTab("quote")}>Quote</button><button role="tab" aria-selected={inspectorTab === "details"} className={inspectorTab === "details" ? "active" : ""} onClick={() => setInspectorTab("details")}>Details</button></div>
         <div className="inspector-scroll">
-          {inspectorTab === "plan" && <><RequirementsEditor state={state} catalogue={catalogue} busy={busy} onPatch={patch} onRecommend={recommend} onAddExisting={(equipment) => stateAction(() => api.addExisting(state.planId, state.eventVersion, equipment), "Existing equipment recorded.")} onAddDoor={(door) => stateAction(() => api.addDoor(state.planId, state.eventVersion, door), "Door added to the room.")} /><PlanSummary state={state} catalogue={catalogue} selectedId={selectedId} onSelect={selectItem} /></>}
+          {inspectorTab === "plan" && <><RequirementsEditor state={state} catalogue={catalogue} busy={busy} onPatch={patch} onRecommend={recommend} onAddExisting={(equipment) => stateAction(() => api.addExisting(state.planId, state.eventVersion, equipment), "Existing equipment recorded.")} /><PlanSummary state={state} catalogue={catalogue} selectedId={selectedId} onSelect={selectItem} /></>}
           {inspectorTab === "quote" && <QuoteView state={state} busy={busy} onConsent={consentBudget} />}
           {inspectorTab === "details" && <DetailsView variant={selected} />}
         </div>
@@ -151,6 +164,6 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
       <button className={mobileTab === "room" ? "active" : ""} onClick={() => setMobileTab("room")}><Box size={20} />Room</button>
       <button className={mobileTab === "quote" ? "active" : ""} onClick={() => { setMobileTab("quote"); setInspectorTab("quote"); }}><Quote size={20} />Quote</button>
     </nav>
-    {busy && <div className="operation-strip" role="status"><Sparkles size={16} />Checking current products · Testing room layouts · Building the quote</div>}
+    {busy && activity === "build" && <div className="operation-strip" role="status"><Sparkles size={16} />Comparing equipment · Arranging the room · Updating the quote</div>}
   </main>;
 }

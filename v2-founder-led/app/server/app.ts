@@ -12,7 +12,7 @@ import { checkCompatibility } from "./domain/compatibility.js";
 import { validatePlacements } from "./domain/geometry.js";
 import { generateLayout } from "./domain/layout.js";
 import { calculateQuote } from "./domain/quote.js";
-import { buildRecommendation } from "./domain/recommendation.js";
+import { addBestMatchingProduct, buildRecommendation } from "./domain/recommendation.js";
 import { searchCatalogue } from "./domain/search.js";
 import { applyRequirementPatches, PlanStore } from "./domain/state.js";
 
@@ -76,8 +76,8 @@ export function createApp(options: AppOptions = {}) {
 
   app.get("/api/health", (_req, res) => res.json({ ok: true, catalogue: catalogue.getSnapshot().freshness, languageServiceConfigured: Boolean(options.apiKey ?? process.env.OPENAI_API_KEY) }));
 
-  app.post("/api/plans", (_req, res) => {
-    const state = plans.create(catalogue.getSnapshot());
+  app.post("/api/plans", async (_req, res) => {
+    const state = plans.create(await catalogue.refresh());
     res.status(201).json({ state, messages: mara.getHistory(state.planId) });
   });
 
@@ -142,6 +142,21 @@ export function createApp(options: AppOptions = {}) {
     } catch (error) { conflictOrThrow(error, res); }
   });
 
+
+  app.post("/api/plans/:planId/items/recommended", async (req, res) => {
+    const body = z.object({ expectedVersion: z.number().int().nonnegative(), query: z.string().trim().min(2).max(200) }).parse(req.body);
+    const current = plans.get(req.params.planId);
+    if (current.eventVersion !== body.expectedVersion) return res.status(409).json({ code: "STATE_CONFLICT", message: "Your plan changed while this item was being checked.", state: current });
+    const snapshot = await catalogue.refresh();
+    const result = addBestMatchingProduct(current, snapshot, body.query);
+    if (!result.ok) {
+      const status = result.code === "PRODUCT_NOT_FOUND" ? 404 : result.code === "BUDGET_EXCEEDED" ? 409 : 422;
+      return res.status(status).json({ ...result, state: current });
+    }
+    if (result.alreadySelected) return res.json(result);
+    const state = plans.replace(req.params.planId, result.state, body.expectedVersion);
+    res.json({ ...result, state });
+  });
   app.post("/api/plans/:planId/budget-consent", (req, res) => {
     const body = z.object({ expectedVersion: z.number().int().nonnegative(), maximumOverrunCents: z.number().int().positive() }).parse(req.body);
     try {
@@ -206,11 +221,11 @@ export function createApp(options: AppOptions = {}) {
     try { res.json({ state: plans.redo(req.params.planId, body.expectedVersion) }); } catch (error) { conflictOrThrow(error, res); }
   });
 
-  app.get("/api/catalogue", (req, res) => {
-    const snapshot = catalogue.getSnapshot();
+  app.get("/api/catalogue", async (req, res) => {
+    const snapshot = await catalogue.refresh();
     const categories = typeof req.query.category === "string" ? [req.query.category as never] : undefined;
     const results = req.query.q ? searchCatalogue(snapshot, { text: String(req.query.q), categories }) : snapshot.variants.filter((item) => item.active);
-    res.json({ snapshotId: snapshot.snapshotId, freshness: snapshot.freshness, observedAt: snapshot.observedAt, variants: results, diagnostics: snapshot.diagnostics });
+    res.json({ snapshotId: snapshot.snapshotId, sourceKind: snapshot.sourceKind, freshness: snapshot.freshness, observedAt: snapshot.observedAt, variants: snapshot.freshness === "unavailable" ? [] : results, diagnostics: snapshot.diagnostics });
   });
   app.post("/api/catalogue/refresh", async (_req, res) => res.json(await catalogue.refresh(true)));
   app.post("/api/compatibility", (req, res) => {

@@ -70,7 +70,7 @@ const questionFor: Record<string, string> = {
 };
 
 export function nextQuestion(state: PlanState): string {
-  if (!state.blockers.length) return "I have enough to build your first option. Would you like me to put it together?";
+  if (!state.blockers.length) return "That is enough for a useful first option. Use Build with current info when you are ready.";
   return questionFor[state.blockers[0]] ?? "What would you like to change or explore next?";
 }
 
@@ -80,6 +80,7 @@ export function fallbackReply(state: PlanState, acceptedCount: number): string {
     return `I have built a checked plan with ${state.selectedItems.length} items. The complete known quote is ${total}. ${state.recommendation.compromise ?? "You can inspect or adjust every part of it in the plan."}`;
   }
   if (state.status === "infeasible") return `${state.recommendation.explanationFacts[0] ?? "I cannot build a complete checked plan from the current constraints."} Would you rather revise the plan or review the exact shortfall?`;
+  if (state.status === "unavailable") return "I have kept your requirements, but I could not check the current equipment details just now. Please retry the product check.";
   const acknowledgement = acceptedCount ? humanAcknowledgement(state) : "";
   return `${acknowledgement}${nextQuestion(state)}`;
 }

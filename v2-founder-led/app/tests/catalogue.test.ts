@@ -31,11 +31,25 @@ describe("governed catalogue", () => {
     expect(repository.getSnapshot().freshness).toBe("current");
   });
 
-  it("expires a configured live boundary when it cannot establish a fresh snapshot", () => {
+  it("marks a configured live boundary unavailable until it establishes a fresh snapshot", () => {
     let now = new Date("2026-08-11T10:00:00.000Z");
     const repository = new CatalogueRepository({ sheetId: "configured-sheet", now: () => now, maxStaleMinutes: 1 });
     now = new Date("2026-08-11T10:02:00.000Z");
-    expect(repository.getSnapshot().freshness).toBe("expired");
+    expect(repository.getSnapshot().freshness).toBe("unavailable");
+  });
+
+  it("reads a configured Sheet on the first normal refresh instead of serving the seed cache", async () => {
+    const tables = bundleToSheetTables(seedCatalogue);
+    let calls = 0;
+    const fetchImpl = async (input: string | URL | Request) => {
+      calls += 1;
+      const tab = new URL(String(input)).searchParams.get("sheet") as SheetTab;
+      return new Response(toCsv(tables[tab]), { status: 200 });
+    };
+    const repository = new CatalogueRepository({ sheetId: "test-sheet", fetchImpl: fetchImpl as typeof fetch });
+    const snapshot = await repository.refresh();
+    expect(snapshot.sourceKind).toBe("google_sheets");
+    expect(calls).toBeGreaterThan(0);
   });
 
   it("publishes a new snapshot only after a valid live refresh", async () => {

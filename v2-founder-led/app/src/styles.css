@@ -153,9 +153,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .global-error { position: fixed; left: 50%; top: 66px; transform: translateX(-50%); z-index: 100; width: min(560px, calc(100% - 24px)); background: #fff4f2; border: 1px solid #e6aaa6; border-left: 5px solid var(--invalid); padding: 10px 12px; display: flex; justify-content: space-between; gap: 12px; font-size: 13px; box-shadow: 0 8px 25px rgba(27,36,39,.16); }.global-error button{border:0;background:transparent;color:var(--invalid);font-weight:700;cursor:pointer}
 .operation-strip { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 50; background: var(--graphite); color: #fff; display: flex; align-items: center; gap: 8px; padding: 9px 13px; border-radius: 4px; font-size: 11px; box-shadow: 0 5px 16px rgba(27,36,39,.24); }
 .mobile-nav { grid-row: 4; display: none; }
-.boot-screen { min-height:100vh;display:grid;place-content:center;justify-items:center;gap:10px;text-align:center;background:#f7f9f8}.boot-screen h1{font-size:27px;margin:5px 0 0}.boot-screen p{margin:0 0 12px;color:var(--muted)}
+.boot-screen { min-height:100vh;display:grid;place-content:center;justify-items:center;gap:10px;text-align:center;background:#f7f9f8;padding:24px}.boot-screen h1{font-size:27px;margin:5px 0 0}.boot-screen p{margin:0;color:var(--muted)}.boot-screen small{max-width:360px;color:var(--muted);line-height:1.45}
+.boot-progress{width:min(300px,72vw);height:5px;background:#dce5e2;overflow:hidden;margin:8px 0 2px}.boot-progress span{display:block;width:42%;height:100%;background:var(--teal);animation:boot-progress 1.5s ease-in-out infinite}
+.chat-plan-action{margin:4px 0 10px 24px;padding:11px 12px;border-left:3px solid var(--teal);background:#f1f7f5;display:grid;gap:9px;font-size:12px;color:var(--graphite)}.chat-plan-action .primary-button{justify-self:start}
 
 @keyframes dots { 0%,70%,100%{opacity:.25;transform:translateY(0)}35%{opacity:1;transform:translateY(-3px)} }
+@keyframes boot-progress { from{transform:translateX(-110%)} to{transform:translateX(245%)} }
 @keyframes pulse { 50%{opacity:.35} }
 @keyframes spin { to{transform:rotate(360deg)} }.spin{animation:spin 1s linear infinite}
 

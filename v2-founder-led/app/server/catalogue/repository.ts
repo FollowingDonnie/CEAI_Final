@@ -40,6 +40,9 @@ export class CatalogueRepository {
   }
 
   getSnapshot(): CatalogueSnapshot {
+    if (this.sheetId && this.snapshot.sourceKind !== "google_sheets") {
+      return { ...this.snapshot, freshness: "unavailable" };
+    }
     const age = this.now().getTime() - new Date(this.snapshot.observedAt).getTime();
     if (!this.sheetId && this.snapshot.sourceKind === "governed_seed") return { ...this.snapshot, freshness: "current" };
     const freshness = age <= this.refreshMs ? "current" : age <= this.maxStaleMs ? "stale" : "expired";
@@ -49,8 +52,13 @@ export class CatalogueRepository {
   async refresh(force = false): Promise<CatalogueSnapshot> {
     if (!this.sheetId) return this.getSnapshot();
     const current = this.getSnapshot();
+    if (current.sourceKind !== "google_sheets") return this.refreshFromSheet();
     const age = this.now().getTime() - new Date(current.observedAt).getTime();
     if (!force && age < this.refreshMs) return current;
+    return this.refreshFromSheet();
+  }
+
+  private refreshFromSheet(): Promise<CatalogueSnapshot> {
     if (this.refreshPromise) return this.refreshPromise;
     this.refreshPromise = this.loadGoogleSheet().finally(() => { this.refreshPromise = null; });
     return this.refreshPromise;

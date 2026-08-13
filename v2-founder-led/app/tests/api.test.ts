@@ -61,7 +61,33 @@ describe("Northstar API", () => {
     expect(response.body.state.blockers).not.toContain("room.doorConfirmed");
     expect(response.body.state.blockers).not.toContain("priorities");
     expect(response.body.message.text).not.toMatch(/\b(tool|api|model|row|sheet|recorded|new_space|open_floor)\b/i);
-    expect(nextQuestion(response.body.state)).toContain("enough to build your first option");
+    expect(nextQuestion(response.body.state)).toContain("Build with current info");
+  });
+
+  it("adds the best matching product in one atomic action", async () => {
+    const { app } = createApp({ apiKey: undefined });
+    const state = await createReadyPlan(app, 500000);
+    const response = await request(app).post(`/api/plans/${state.planId}/items/recommended`).send({
+      expectedVersion: state.eventVersion,
+      query: "resistance bands",
+    }).expect(200);
+    expect(response.body.product.variantId).toBe("x10-band-kit");
+    expect(response.body.state.selectedItems).toContain("x10-band-kit");
+    expect(response.body.state.eventVersion).toBe(state.eventVersion + 1);
+  });
+
+  it("does not mutate the plan when a requested product fails room or budget validation", async () => {
+    const { app } = createApp({ apiKey: undefined });
+    const state = await createReadyPlan(app, 225000);
+    const response = await request(app).post(`/api/plans/${state.planId}/items/recommended`).send({
+      expectedVersion: state.eventVersion,
+      query: "rowing machine",
+    });
+    expect([409, 422]).toContain(response.status);
+    expect(["BUDGET_EXCEEDED", "ITEM_DOES_NOT_FIT"]).toContain(response.body.code);
+    const stored = await request(app).get(`/api/plans/${state.planId}`).expect(200);
+    expect(stored.body.state.eventVersion).toBe(state.eventVersion);
+    expect(stored.body.state.selectedItems).not.toContain("c10-rower-standard");
   });
 
   it("exposes all five compatibility outcomes without approving dimensional-only", async () => {
