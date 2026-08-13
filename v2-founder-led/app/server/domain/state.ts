@@ -17,10 +17,10 @@ export function emptyField<T>(value: T | null = null, unit: string | null = null
 export function getBlockers(state: PlanState): string[] {
   const blockers: string[] = [];
   if (!state.journeyType.value) blockers.push("journeyType");
-  if (state.journeyType.value === "upgrade" && state.existingEquipment.length === 0) blockers.push("existingEquipment");
   if (state.requirements.room.widthMm.value === null) blockers.push("room.widthMm");
   if (state.requirements.room.lengthMm.value === null) blockers.push("room.lengthMm");
   if (state.requirements.room.heightMm.value === null) blockers.push("room.heightMm");
+  if (state.journeyType.value === "upgrade" && state.existingEquipment.length === 0) blockers.push("existingEquipment");
   if (state.journeyType.value !== "upgrade") {
     if (!state.requirements.goals.value?.length) blockers.push("goals");
     if (!state.requirements.experience.value) blockers.push("experience");

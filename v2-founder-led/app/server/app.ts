@@ -16,7 +16,7 @@ import { generateLayout } from "./domain/layout.js";
 import { calculateQuote } from "./domain/quote.js";
 import { addBestMatchingProduct, buildRecommendation } from "./domain/recommendation.js";
 import { searchCatalogue } from "./domain/search.js";
-import { applyRequirementPatches, PlanStore } from "./domain/state.js";
+import { applyRequirementPatches, getBlockers, PlanStore } from "./domain/state.js";
 
 export interface AppOptions {
   catalogue?: CatalogueRepository;
@@ -110,19 +110,51 @@ export function createApp(options: AppOptions = {}) {
     } catch (error) { conflictOrThrow(error, res); }
   });
 
-  app.post("/api/plans/:planId/existing-equipment", (req, res) => {
+  app.post("/api/plans/:planId/existing-equipment", async (req, res) => {
     const catalogueItem = z.object({ identityKind: z.enum(["northstar", "governed_reference"]), variantId: z.string(), name: z.string().optional() });
     const manualItem = z.object({ identityKind: z.literal("manual"), name: z.string().min(2).max(100), widthMm: z.number().int().positive(), lengthMm: z.number().int().positive(), heightMm: z.number().int().positive() });
     const body = z.object({ expectedVersion: z.number().int().nonnegative(), equipment: z.union([catalogueItem, manualItem]) }).parse(req.body);
     try {
+      const snapshot = await catalogue.refresh();
       const state = plans.mutate(req.params.planId, body.expectedVersion, (current) => {
         const next = structuredClone(current);
         const equipment: ExistingEquipment = body.equipment.identityKind === "manual"
           ? { id: randomUUID(), identityKind: "manual", name: body.equipment.name, widthMm: body.equipment.widthMm, lengthMm: body.equipment.lengthMm, heightMm: body.equipment.heightMm, evidenceStatus: "footprint_only" }
           : { id: randomUUID(), identityKind: body.equipment.identityKind, variantId: body.equipment.variantId, evidenceStatus: "verified" };
         next.existingEquipment = [equipment];
-        next.requirementsVersion += 1; next.eventVersion += 1; next.status = "collecting";
-        next.blockers = next.blockers.filter((blocker) => blocker !== "existingEquipment");
+        next.requirementsVersion += 1;
+        next.eventVersion += 1;
+        next.blockers = getBlockers(next);
+        next.compatibilityResults = [];
+        next.budgetConsent = { overrunAllowed: false, maximumAuthorisedOverrunCents: null, consentedAt: null };
+
+        if (equipment.identityKind !== "manual" && next.blockers.length === 0) {
+          const ids = [equipment.variantId];
+          const layout = generateLayout(next, snapshot, ids);
+          next.selectedItems = ids;
+          next.placements = layout.placements;
+          next.quote = calculateQuote(next, snapshot, ids);
+          next.recommendation = {
+            ...next.recommendation,
+            status: layout.status === "feasible" && next.quote.status === "current" ? "current" : "infeasible",
+            candidateIds: ids,
+            explanationFacts: layout.status === "feasible"
+              ? ["Your owned rack has been positioned in the recorded room and excluded from the upgrade cost."]
+              : ["The selected rack does not fit within the recorded room dimensions."],
+            compromise: layout.status === "feasible" ? "The owned rack is the fixed starting point for compatible upgrades." : null,
+            requirementsVersion: next.requirementsVersion,
+            catalogueSnapshotId: snapshot.snapshotId,
+          };
+          next.status = layout.status === "feasible" && next.quote.status === "current" ? "current" : "infeasible";
+          next.catalogueSnapshotId = snapshot.snapshotId;
+          next.sourceStatus = { catalogueFreshness: snapshot.freshness, observedAt: snapshot.observedAt, refreshError: snapshot.diagnostics.at(-1) ?? null };
+        } else {
+          next.selectedItems = [];
+          next.placements = [];
+          next.status = "collecting";
+          next.recommendation.status = "empty";
+          next.quote.status = "empty";
+        }
         return next;
       });
       res.json({ state });

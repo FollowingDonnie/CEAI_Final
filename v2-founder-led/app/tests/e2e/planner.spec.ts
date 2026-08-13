@@ -115,7 +115,7 @@ test("upgrade journey guides owned-equipment selection and applies a governed at
     page.waitForResponse((response) => response.request().method() === "POST" && response.url().includes("/chat") && response.ok()),
     page.getByLabel("Planning journey", { exact: true }).getByRole("button", { name: "Upgrade equipment" }).click(),
   ]);
-  await expect(page.getByText("Choose your equipment here")).toBeVisible();
+  await expect(page.getByText("Enter the room size first")).toBeVisible();
   const room = page.locator(".room-fields");
   for (const [label, value] of [[/length/i, "4"], [/width/i, "3"], [/height/i, "2.4"]] as const) {
     await Promise.all([
@@ -123,11 +123,15 @@ test("upgrade journey guides owned-equipment selection and applies a governed at
       room.getByRole("spinbutton", { name: label }).fill(value),
     ]);
   }
+  await expect(page.getByText("Choose your equipment here")).toBeVisible();
   await Promise.all([
     page.waitForResponse((response) => response.request().method() === "POST" && response.url().includes("/existing-equipment") && response.ok()),
     page.getByLabel("Northstar rack").selectOption("h30-half-rack-entry"),
   ]);
   await expect(page.locator(".confirmed-line")).toContainText("H30 Half Rack");
+  await expect(page.locator(".placement-table")).toContainText("H30 Half Rack");
+  await expect(page.locator(".equipment-row").filter({ hasText: "H30 Half Rack" })).toContainText("Owned");
+  await expect(page.getByText(/shown in your room and marked as owned/)).toBeVisible();
   await Promise.all([
     page.waitForResponse((response) => response.request().method() === "POST" && response.url().includes("/items/recommended") && response.ok()),
     page.getByRole("button", { name: "Spotter arms" }).click(),

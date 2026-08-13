@@ -58,7 +58,7 @@ export function extractRequirementPatches(message: string, state: PlanState): Re
 
 const questionFor: Record<string, string> = {
   journeyType: "Are you planning a new training space, or upgrading equipment you already own?",
-  existingEquipment: "Choose your exact rack in the highlighted Equipment you own section of the Plan panel. If it is not a Northstar model, use Enter another item and add its measured footprint.",
+  existingEquipment: "Now choose your exact rack in the highlighted Equipment you own section. I will place it in the room as the starting point for compatible upgrades.",
   "room.widthMm": "What are the room's length, width and ceiling height? Metres or centimetres are both fine.",
   "room.lengthMm": "What are the room's length, width and ceiling height? Metres or centimetres are both fine.",
   "room.heightMm": "What is the ceiling height?",

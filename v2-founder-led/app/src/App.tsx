@@ -97,7 +97,7 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
     try {
       const result = await api.chat(state.planId, state.eventVersion, message); stateRef.current = result.state; setState(result.state); setMessages((current) => [...current, result.message]);
       if (result.state.status === "current") { setMobileTab("room"); setInspectorTab("plan"); }
-      else if (result.state.journeyType.value === "upgrade" && result.state.blockers.includes("existingEquipment")) { setInspectorTab("plan"); setMobileTab("plan"); setNotice("Choose your equipment in the highlighted Plan section."); }
+      else if (result.state.journeyType.value === "upgrade" && result.state.blockers[0] === "existingEquipment") { setInspectorTab("plan"); setMobileTab("plan"); setNotice("Choose your equipment in the highlighted Plan section."); }
     } catch (value) { setMessages((current) => current.filter((item) => item.id !== user.id)); handleApiError(value); }
     finally { setBusy(false); setActivity(null); }
   };
@@ -227,10 +227,18 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
     const current = stateRef.current; if (!current) return;
     setBusy(true); setActivity("build");
     try {
-      const result = await api.addExisting(current.planId, current.eventVersion, equipment); stateRef.current = result.state; setState(result.state); setMobileTab("chat"); setInspectorTab("plan");
+      const result = await api.addExisting(current.planId, current.eventVersion, equipment); stateRef.current = result.state; setState(result.state); setInspectorTab("plan");
       const selectedEquipment = result.state.existingEquipment[0]; const name = !selectedEquipment ? "your equipment" : selectedEquipment.identityKind === "manual" ? selectedEquipment.name : catalogue.find((item) => item.variantId === selectedEquipment.variantId)?.name ?? "your equipment";
-      setMessages((items) => [...items, { id: crypto.randomUUID(), role: "assistant", text: `${name} is now the equipment we're upgrading. What would you like to add or improve?`, createdAt: new Date().toISOString() }]);
-      setNotice(`${name} selected.`);
+      const placed = selectedEquipment?.identityKind !== "manual" && result.state.placements.some((placement) => placement.variantId === selectedEquipment.variantId);
+      if (placed) {
+        setSelectedId(selectedEquipment.variantId); setMobileTab("room");
+        setMessages((items) => [...items, { id: crypto.randomUUID(), role: "assistant", text: name + " is now shown in your room and marked as owned, so it is excluded from the upgrade cost. What would you like to add or improve?", createdAt: new Date().toISOString() }]);
+        setNotice(name + " placed as owned equipment.");
+      } else {
+        setMobileTab("chat");
+        setMessages((items) => [...items, { id: crypto.randomUUID(), role: "assistant", text: name + " is recorded, but it does not fit within the room dimensions provided. Please check the dimensions or choose a different rack.", createdAt: new Date().toISOString() }]);
+        setNotice(name + " needs a room-fit review.");
+      }
     } catch (value) { handleApiError(value); }
     finally { setBusy(false); setActivity(null); }
   };
@@ -283,7 +291,7 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
       <aside className="plan-inspector" aria-label="Plan inspector">
         <div className="inspector-tabs" role="tablist"><button role="tab" aria-selected={inspectorTab === "plan"} className={inspectorTab === "plan" ? "active" : ""} onClick={() => setInspectorTab("plan")}>Plan</button><button role="tab" aria-selected={inspectorTab === "quote"} className={inspectorTab === "quote" ? "active" : ""} onClick={() => setInspectorTab("quote")}>Quote</button><button role="tab" aria-selected={inspectorTab === "details"} className={inspectorTab === "details" ? "active" : ""} onClick={() => setInspectorTab("details")}>Details</button></div>
         <div className="inspector-scroll">
-          {inspectorTab === "plan" && <><RequirementsEditor state={state} catalogue={catalogue} busy={busy} highlightEquipment={state.journeyType.value === "upgrade" && state.blockers.includes("existingEquipment")} onPatch={patch} onRecommend={recommend} onAddExisting={addExisting} onUpgradeIntent={addRefinement} /><PlanSummary state={state} catalogue={catalogue} alternatives={alternatives} selectedId={selectedId} busy={busy} onSelect={selectItem} onApplyAlternative={applyAlternative} /></>}
+          {inspectorTab === "plan" && <><RequirementsEditor state={state} catalogue={catalogue} busy={busy} highlightEquipment={state.journeyType.value === "upgrade" && state.blockers[0] === "existingEquipment"} onPatch={patch} onRecommend={recommend} onAddExisting={addExisting} onUpgradeIntent={addRefinement} /><PlanSummary state={state} catalogue={catalogue} alternatives={alternatives} selectedId={selectedId} busy={busy} onSelect={selectItem} onApplyAlternative={applyAlternative} /></>}
           {inspectorTab === "quote" && <QuoteView state={state} busy={busy} onConsent={consentBudget} />}
           {inspectorTab === "details" && <DetailsView variant={selected} state={state} replacements={replacements} busy={busy} onReplace={replaceProduct} onRemove={removeProduct} />}
         </div>

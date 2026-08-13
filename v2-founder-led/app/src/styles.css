@@ -65,7 +65,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .new-chat-button { margin-left: auto; min-height: 34px; border: 1px solid #a7bab6; border-radius: 4px; background: #fff; color: var(--teal-dark); padding: 0 10px; display: inline-flex; gap: 6px; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
 .new-chat-button:hover { background: #e6f3f1; border-color: var(--teal); }
 .new-chat-button:disabled { opacity: .5; cursor: not-allowed; }
-.equipment-owned.attention { background: #eef9f6; box-shadow: inset 4px 0 0 var(--teal); }
+.inspector-section.attention { background: #eef9f6; box-shadow: inset 4px 0 0 var(--teal); }
 .control-prompt { display: flex; align-items: center; gap: 6px; color: var(--teal-dark); font-size: 11px; font-weight: 800; margin: 0 0 10px; }
 .section-help, .equipment-list-hint { color: var(--muted); font-size: 11px; line-height: 1.4; margin: 0 0 9px; }
 .choice-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }

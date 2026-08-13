@@ -46,11 +46,13 @@ export function RequirementsEditor({ state, catalogue, busy, highlightEquipment,
 
   const room = state.requirements.room;
   const updateRoom = (field: "room.lengthMm" | "room.widthMm" | "room.heightMm", value: string) => onPatch([{ field, value: Math.max(0, Math.round(Number(value) * 1000)) }]);
-  const upgradeReady = state.journeyType.value === "upgrade" && Boolean(existing) && room.lengthMm.value != null && room.widthMm.value != null && room.heightMm.value != null;
+  const roomReady = room.lengthMm.value != null && room.widthMm.value != null && room.heightMm.value != null;
+  const upgradeReady = state.journeyType.value === "upgrade" && Boolean(existing) && roomReady;
 
   return <div className="requirements-editor">
-    <section className="inspector-section">
+    <section className={`inspector-section ${state.journeyType.value === "upgrade" && !roomReady ? "attention" : ""}`}>
       <div className="section-title"><Ruler size={17} /><h3>Room</h3><small>{[room.lengthMm.value, room.widthMm.value, room.heightMm.value].filter((value) => value != null).length}/3</small></div>
+      {state.journeyType.value === "upgrade" && !roomReady && <p className="control-prompt"><LocateFixed size={15} />Enter the room size first</p>}
       <div className="room-fields">
         <label>Length<span><input type="number" min="0" step="0.1" value={(room.lengthMm.value ?? 0) / 1000} onChange={(event) => updateRoom("room.lengthMm", event.target.value)} />M</span></label>
         <label>Width<span><input type="number" min="0" step="0.1" value={(room.widthMm.value ?? 0) / 1000} onChange={(event) => updateRoom("room.widthMm", event.target.value)} />M</span></label>
@@ -68,9 +70,9 @@ export function RequirementsEditor({ state, catalogue, busy, highlightEquipment,
       <section ref={equipmentRef} className={`inspector-section equipment-owned ${highlightEquipment ? "attention" : ""}`} aria-label="Equipment you own" tabIndex={-1}>
         <div className="section-title"><Pencil size={17} /><h3>Equipment you own</h3></div>
         {highlightEquipment && <p className="control-prompt"><LocateFixed size={15} />Choose your equipment here</p>}
-        {existing ? <><p className="confirmed-line"><Check size={16} />{existingName}</p><label>Change equipment<select value={existing.identityKind === "manual" ? "" : existing.variantId} onChange={(event) => event.target.value && onAddExisting({ identityKind: "northstar", variantId: event.target.value })}><option value="">Choose exact model</option>{rackOptions.map((rack) => <option value={rack.variantId} key={rack.variantId}>{rack.name} ({rack.sku})</option>)}</select></label></> : <>
-          <label>Northstar rack<select defaultValue="" onChange={(event) => event.target.value && onAddExisting({ identityKind: "northstar", variantId: event.target.value })}><option value="">Choose exact model</option>{rackOptions.map((rack) => <option value={rack.variantId} key={rack.variantId}>{rack.name} ({rack.sku})</option>)}</select></label>
-          <button className="text-button" type="button" onClick={() => setManualOpen((open) => !open)}><Plus size={16} />Enter another item</button>
+        {existing ? <><p className="confirmed-line"><Check size={16} />{existingName}</p><label>Change equipment<select disabled={!roomReady || busy} value={existing.identityKind === "manual" ? "" : existing.variantId} onChange={(event) => event.target.value && onAddExisting({ identityKind: "northstar", variantId: event.target.value })}><option value="">Choose exact model</option>{rackOptions.map((rack) => <option value={rack.variantId} key={rack.variantId}>{rack.name} ({rack.sku})</option>)}</select></label></> : <>
+          <label>Northstar rack<select disabled={!roomReady || busy} defaultValue="" onChange={(event) => event.target.value && onAddExisting({ identityKind: "northstar", variantId: event.target.value })}><option value="">Choose exact model</option>{rackOptions.map((rack) => <option value={rack.variantId} key={rack.variantId}>{rack.name} ({rack.sku})</option>)}</select></label>
+          <button className="text-button" type="button" disabled={!roomReady || busy} onClick={() => setManualOpen((open) => !open)}><Plus size={16} />Enter another item</button>
           {manualOpen && <ManualEquipmentForm onSubmit={async (item) => { await onAddExisting(item); setManualOpen(false); }} />}
         </>}
       </section>
