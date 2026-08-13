@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Send, Sparkles } from "lucide-react";
+import { MessageSquarePlus, Send, Sparkles } from "lucide-react";
 import type { ChatMessage, PlanState, Variant } from "../../shared/types";
 
 interface Props {
@@ -7,6 +7,7 @@ interface Props {
   catalogue: Variant[];
   messages: ChatMessage[];
   busy: boolean;
+  onNewChat: () => void;
   onSend: (message: string) => Promise<void>;
   thinkingLabel: string | null;
   onBuild: () => Promise<void>;
@@ -17,7 +18,7 @@ interface Props {
   onDeclineAddition: () => void;
 }
 
-export function ChatPane({ state, catalogue, messages, busy, thinkingLabel, pendingAddition, onSend, onBuild, onAddRefinement, onSkipRefinement, onAuthoriseAddition, onDeclineAddition }: Props) {
+export function ChatPane({ state, catalogue, messages, busy, thinkingLabel, pendingAddition, onNewChat, onSend, onBuild, onAddRefinement, onSkipRefinement, onAuthoriseAddition, onDeclineAddition }: Props) {
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -43,6 +44,7 @@ export function ChatPane({ state, catalogue, messages, busy, thinkingLabel, pend
       <header className="pane-header mara-header">
         <span className="mara-avatar" aria-hidden="true">MQ</span>
         <span><strong>Mara Quinn</strong><small>Home gym equipment specialist</small></span>
+        <button className="new-chat-button" type="button" disabled={busy} onClick={onNewChat}><MessageSquarePlus size={16} aria-hidden="true" />New chat</button>
       </header>
       <div className="messages" aria-live="polite" ref={messagesRef}>
         {messages.map((message) => (

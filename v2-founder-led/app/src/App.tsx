@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Box, ClipboardList, Dumbbell, MessageCircle, PanelRight, Quote, RefreshCw, RotateCcw, Sparkles, Undo2 } from "lucide-react";
+import { Box, ClipboardList, Dumbbell, MessageCircle, PanelRight, Quote, RefreshCw, Sparkles, Undo2 } from "lucide-react";
 import type { ChatMessage, PlanAlternative, PlanState, RequirementPatch, Variant } from "../shared/types";
 import { api, ApiError } from "./api";
 import { ChatPane } from "./components/ChatPane";
@@ -42,7 +42,7 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
     setBusy(true); setActivity("startup"); setBootSlow(false); setError(null);
     try {
       const [created, items] = await Promise.all([api.createPlan(), api.getCatalogue()]);
-      stateRef.current = created.state; setState(created.state); setMessages(created.messages); setCatalogue(items.variants); setSelectedId(null); setPendingAddition(null); setRecentAction(null); setInspectorTab("plan"); setMobileTab("chat"); setRoomView("2d"); setNotice("A new anonymous plan is ready.");
+      stateRef.current = created.state; setState(created.state); setMessages(created.messages); setCatalogue(items.variants); setAlternatives([]); setReplacements([]); setSelectedId(null); setPendingAddition(null); setRecentAction(null); setInspectorTab("plan"); setMobileTab("chat"); setRoomView("2d"); setNotice("A new anonymous plan is ready.");
     } catch { setError("Northstar could not start a new plan. Please retry."); }
     finally { setBusy(false); setActivity(null); }
   }, []);
@@ -266,7 +266,6 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
       </div>
       <div className={`plan-status ${state.status}`}><span aria-hidden="true" />{statusLabel[state.status]}</div>
       <button className="freshness-button" onClick={refreshCatalogue} disabled={busy} title="Refresh current catalogue"><RefreshCw className={busy ? "spin" : ""} size={16} /><span>Checked {checkedTime(state.sourceStatus.observedAt)}</span></button>
-      <button className="start-over-button" type="button" disabled={busy} onClick={() => window.confirm("Start a new anonymous plan? Your current plan will be cleared.") && initialise()}><RotateCcw size={16} />Start over</button>
     </header>
 
     <div className="summary-rail"><span>{metres(state.requirements.room.lengthMm.value)} x {metres(state.requirements.room.widthMm.value)} x {metres(state.requirements.room.heightMm.value)}</span><span>{state.selectedItems.length} item{state.selectedItems.length === 1 ? "" : "s"}</span><span>{state.quote.grandTotalCents == null ? "Quote pending" : `EUR ${(state.quote.grandTotalCents / 100).toLocaleString("en-IE")}`}</span><span className={state.status}>{statusLabel[state.status]}</span></div>
@@ -274,7 +273,7 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
     {error && <div className="global-error" role="alert">{error}<button onClick={() => setError(null)}>Dismiss</button></div>}
 
     <div className={`workspace mobile-${mobileTab}`}>
-      <ChatPane state={state} catalogue={catalogue} messages={messages} busy={busy} thinkingLabel={thinkingLabel} pendingAddition={pendingAddition} onSend={send} onBuild={recommend} onAddRefinement={addRefinement} onSkipRefinement={skipRefinement} onAuthoriseAddition={authorisePendingAddition} onDeclineAddition={declinePendingAddition} />
+      <ChatPane key={state.planId} state={state} catalogue={catalogue} messages={messages} busy={busy} thinkingLabel={thinkingLabel} pendingAddition={pendingAddition} onNewChat={() => window.confirm("Start a new chat? Your current plan will be cleared.") && initialise()} onSend={send} onBuild={recommend} onAddRefinement={addRefinement} onSkipRefinement={skipRefinement} onAuthoriseAddition={authorisePendingAddition} onDeclineAddition={declinePendingAddition} />
       <section className="room-workspace" aria-label="Room workspace">
         <header className="workspace-header"><div className="view-control" aria-label="Room view"><button className={roomView === "2d" ? "active" : ""} onClick={() => setRoomView("2d")}>2D plan</button><button className={roomView === "3d" ? "active" : ""} onClick={() => setRoomView("3d")}>3D room</button></div><button className="plan-drawer-button" onClick={() => setMobileTab("plan")}><PanelRight size={17} />Plan and quote</button></header>
         <div className="room-surface" role="region" aria-label="Interactive room plan" tabIndex={0}>
