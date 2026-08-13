@@ -59,6 +59,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .message.assistant svg { color: var(--teal); flex: 0 0 auto; margin-top: 3px; }
 .message.user { align-self: flex-end; background: var(--teal); color: #fff; padding: 10px 12px; }
 .message.system { align-self: center; color: var(--muted); font-size: 11px; border: 1px solid var(--line); padding: 5px 9px; background: #fff; }
+.suggested-replies { display: grid; gap: 7px; align-self: flex-start; max-width: 100%; }
+.suggested-replies > small { color: var(--muted); font-size: 11px; line-height: 1.35; }
 .quick-choices { display: flex; flex-wrap: wrap; gap: 7px; align-self: flex-start; }
 .quick-choices button, .choice-chips button { border: 1px solid #a7bab6; background: #fff; color: var(--teal-dark); min-height: 34px; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 650; }
 .choice-chips button.selected, .quick-choices button:hover { background: #e6f3f1; border-color: var(--teal); }

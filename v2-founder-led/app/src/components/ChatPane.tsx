@@ -17,6 +17,7 @@ export function ChatPane({ state, catalogue, messages, busy, thinkingLabel, onSe
   const endRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const choices = quickChoices(state, catalogue);
+  const showFlexibleGoalsHint = state.blockers[0] === "goals";
   const canBuild = !state.blockers.length && ["empty", "stale"].includes(state.recommendation.status);
   useEffect(() => {
     const container = messagesRef.current;
@@ -51,10 +52,13 @@ export function ChatPane({ state, catalogue, messages, busy, thinkingLabel, onSe
           </div>
         )}
         {!busy && choices.length > 0 && (
-          <div className="quick-choices" aria-label="Suggested replies">
-            {choices.map((choice) => (
-              <button type="button" key={choice.label} onClick={() => onSend(choice.message)}>{choice.label}</button>
-            ))}
+          <div className="suggested-replies">
+            {showFlexibleGoalsHint && <small>These are shortcuts. You can type any training goal below.</small>}
+            <div className="quick-choices" aria-label="Suggested replies">
+              {choices.map((choice) => (
+                <button type="button" key={choice.label} onClick={() => onSend(choice.message)}>{choice.label}</button>
+              ))}
+            </div>
           </div>
         )}
         {busy && thinkingLabel && (
@@ -88,6 +92,9 @@ function quickChoices(state: PlanState, catalogue: Variant[]): QuickChoice[] {
   if (blocker === "goals") return [
     { label: "Build muscle", message: "My main goal is bodybuilding and building muscle." },
     { label: "Get stronger", message: "My main goal is strength." },
+    { label: "Cardio fitness", message: "My main goal is cardio fitness." },
+    { label: "Calisthenics", message: "My main goal is calisthenics and bodyweight training." },
+    { label: "Hybrid training", message: "I want a hybrid setup for strength, cardio and flexible open-floor training." },
     { label: "General fitness", message: "I want a balanced setup for general fitness." },
   ];
   if (blocker === "experience") return [
