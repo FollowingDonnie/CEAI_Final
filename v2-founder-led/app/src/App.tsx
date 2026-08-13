@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Box, ChevronDown, ClipboardList, MessageCircle, PanelRight, Quote, RefreshCw, RotateCcw, Sparkles } from "lucide-react";
-import type { ChatMessage, PlanState, RequirementPatch, Variant } from "../shared/types";
+import { Box, ChevronDown, ClipboardList, Dumbbell, MessageCircle, PanelRight, Quote, RefreshCw, RotateCcw, Sparkles } from "lucide-react";
+import type { ChatMessage, PlanAlternative, PlanState, RequirementPatch, Variant } from "../shared/types";
 import { api, ApiError } from "./api";
 import { ChatPane } from "./components/ChatPane";
 import { DetailsView } from "./components/DetailsView";
@@ -20,6 +20,7 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
   const [state, setState] = useState<PlanState | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [catalogue, setCatalogue] = useState<Variant[]>([]);
+  const [alternatives, setAlternatives] = useState<PlanAlternative[]>([]);
   const [busy, setBusy] = useState(false);
   const [activity, setActivity] = useState<Activity>(null);
   const [bootSlow, setBootSlow] = useState(false);
@@ -48,6 +49,15 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
     const timer = window.setTimeout(() => setBootSlow(true), 6000);
     return () => window.clearTimeout(timer);
   }, [state, busy]);
+
+  useEffect(() => {
+    let active = true;
+    if (!state || state.status !== "current") { setAlternatives([]); return; }
+    api.getAlternatives(state.planId)
+      .then((result) => { if (active) setAlternatives(result.alternatives); })
+      .catch(() => { if (active) setAlternatives([]); });
+    return () => { active = false; };
+  }, [state?.planId, state?.eventVersion, state?.status]);
 
   const handleApiError = (value: unknown) => {
     if (value instanceof ApiError && value.status === 409 && value.body.state) {
@@ -103,7 +113,30 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
 
   const selectItem = useCallback((id: string | null) => { setSelectedId(id); if (id) setInspectorTab("details"); }, []);
   const selected = useMemo(() => selectedId ? variantById(catalogue, selectedId) : undefined, [catalogue, selectedId]);
+  const applyAlternative = async (alternativeId: PlanAlternative["id"]) => {
+    const current = stateRef.current;
+    if (!current) return;
+    setBusy(true); setActivity("build"); setError(null);
+    try {
+      const result = await api.applyAlternative(current.planId, alternativeId, current.eventVersion);
+      stateRef.current = result.state; setState(result.state); setNotice("Checked plan option applied."); setRoomView("3d");
+    } catch (value) { handleApiError(value); }
+    finally { setBusy(false); setActivity(null); }
+  };
+
+  const swapProduct = async (variantId: string) => {
+    const current = stateRef.current;
+    if (!current) return;
+    setBusy(true); setActivity("build"); setError(null);
+    try {
+      const result = await api.swapProduct(current.planId, variantId, current.eventVersion);
+      stateRef.current = result.state; setState(result.state); setSelectedId(result.product.variantId); setNotice(`${result.product.name} checked and added to the plan.`); setRoomView("3d");
+    } catch (value) { handleApiError(value); }
+    finally { setBusy(false); setActivity(null); }
+  };
+
   const consentBudget = async (maximumOverrunCents: number) => {
+
     const current = stateRef.current;
     if (!current) return;
     setBusy(true); setActivity("build"); setError(null);
@@ -118,7 +151,7 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
   };
 
 
-  if (!state) return <main className="boot-screen"><div className="brand-mark large"><span /><span /><span /></div><h1>Northstar</h1><p>{error ?? "Preparing your planning workspace..."}</p>{!error && <><div className="boot-progress" role="progressbar" aria-label="Preparing planning workspace"><span /></div><small>{bootSlow ? "The planning service is starting. The first visit can take up to a minute." : "Connecting to current equipment information..."}</small></>}{error && <button className="primary-button" onClick={initialise}><RefreshCw size={18} />Retry</button>}</main>;
+  if (!state) return <main className="boot-screen"><div className="brand-mark large"><Dumbbell aria-hidden="true" /></div><h1>Northstar</h1><p>{error ?? "Preparing your home-gym workspace..."}</p>{!error && <><div className="boot-progress" role="progressbar" aria-label="Preparing home-gym workspace"><span /></div><small>{bootSlow ? "The planning service is starting. The first visit can take up to a minute." : "Connecting to current equipment information..."}</small></>}{error && <button className="primary-button" onClick={initialise}><RefreshCw size={18} />Retry</button>}</main>;
   const thinkingLabel = activity === "chat"
     ? "Mara is typing..."
     : activity === "build" ? "Mara is arranging your space..." : null;
@@ -126,7 +159,7 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
 
   return <main className="app-shell">
     <header className="topbar">
-      <div className="brand"><div className="brand-mark"><span /><span /><span /></div><div><strong>Northstar</strong><small>Space Planner</small></div></div>
+      <div className="brand"><div className="brand-mark"><Dumbbell aria-hidden="true" /></div><div><strong>Northstar</strong><small>Home Gym Planner</small></div></div>
       <div className="journey-control" aria-label="Planning journey">
         <button className={state.journeyType.value === "new_space" ? "active" : ""} onClick={() => patch([{ field: "journeyType", value: "new_space" }])}>Plan a gym</button>
         <button className={state.journeyType.value === "upgrade" ? "active" : ""} onClick={() => patch([{ field: "journeyType", value: "upgrade" }])}>Upgrade equipment</button>
@@ -151,9 +184,9 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
       <aside className="plan-inspector" aria-label="Plan inspector">
         <div className="inspector-tabs" role="tablist"><button role="tab" aria-selected={inspectorTab === "plan"} className={inspectorTab === "plan" ? "active" : ""} onClick={() => setInspectorTab("plan")}>Plan</button><button role="tab" aria-selected={inspectorTab === "quote"} className={inspectorTab === "quote" ? "active" : ""} onClick={() => setInspectorTab("quote")}>Quote</button><button role="tab" aria-selected={inspectorTab === "details"} className={inspectorTab === "details" ? "active" : ""} onClick={() => setInspectorTab("details")}>Details</button></div>
         <div className="inspector-scroll">
-          {inspectorTab === "plan" && <><RequirementsEditor state={state} catalogue={catalogue} busy={busy} onPatch={patch} onRecommend={recommend} onAddExisting={(equipment) => stateAction(() => api.addExisting(state.planId, state.eventVersion, equipment), "Existing equipment recorded.")} /><PlanSummary state={state} catalogue={catalogue} selectedId={selectedId} onSelect={selectItem} /></>}
+          {inspectorTab === "plan" && <><RequirementsEditor state={state} catalogue={catalogue} busy={busy} onPatch={patch} onRecommend={recommend} onAddExisting={(equipment) => stateAction(() => api.addExisting(state.planId, state.eventVersion, equipment), "Existing equipment recorded.")} /><PlanSummary state={state} catalogue={catalogue} alternatives={alternatives} selectedId={selectedId} busy={busy} onSelect={selectItem} onApplyAlternative={applyAlternative} /></>}
           {inspectorTab === "quote" && <QuoteView state={state} busy={busy} onConsent={consentBudget} />}
-          {inspectorTab === "details" && <DetailsView variant={selected} />}
+          {inspectorTab === "details" && <DetailsView variant={selected} busy={busy} onSwap={swapProduct} />}
         </div>
       </aside>
     </div>

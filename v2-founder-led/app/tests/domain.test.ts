@@ -6,6 +6,7 @@ import { calculateQuote } from "../server/domain/quote.js";
 import { buildRecommendation } from "../server/domain/recommendation.js";
 import { applyRequirementPatches, createPlan, getBlockers, PlanStore } from "../server/domain/state.js";
 import type { Placement, RequirementPatch } from "../shared/types.js";
+import { deriveVisualInventory } from "../src/visual-inventory.js";
 
 const repository = new CatalogueRepository();
 const snapshot = repository.getSnapshot();
@@ -84,6 +85,25 @@ describe("canonical state and deterministic engines", () => {
     const placement: Placement = { placementId: "rack", variantId: rack.variantId, xMm: 10, zMm: 20, rotationDeg: 90, locked: false, geometryVersion: rack.geometry.geometryVersion, validationStatus: "valid", violations: [] };
     expect(footprintRect(rack, placement)).toMatchObject({ x: 10, z: 20, width: 1350, length: 1300 });
   });
+});
+
+it("represents every selected non-spatial item without adding false room placements", () => {
+  const ready = applyRequirementPatches(createPlan(snapshot), readyPatches, "control");
+  const built = buildRecommendation(ready, snapshot);
+  const inventory = deriveVisualInventory(built, snapshot.variants);
+  expect(inventory.find((item) => item.variant.category === "barbell")?.mode).toBe("racked_barbell");
+  expect(inventory.find((item) => item.variant.category === "plates")?.mode).toBe("stacked_plates");
+  expect(inventory.find((item) => item.variant.category === "flooring")?.mode).toBe("flooring");
+  expect(built.placements.some((placement) => snapshot.variants.find((item) => item.variantId === placement.variantId)?.category === "flooring")).toBe(false);
+});
+
+it("moves plates onto selected rack storage in the visual inventory", () => {
+  const ready = applyRequirementPatches(createPlan(snapshot), readyPatches, "control");
+  const built = buildRecommendation(ready, snapshot);
+  built.selectedItems.push("a18-plate-storage");
+  const inventory = deriveVisualInventory(built, snapshot.variants);
+  expect(inventory.find((item) => item.variant.category === "plates")?.mode).toBe("stored_plates");
+  expect(inventory.find((item) => item.variant.variantId === "a18-plate-storage")?.mode).toBe("mounted_attachment");
 });
 
   it("quotes an owned rack at an explicit included EUR 0 and carries compatibility evidence", () => {

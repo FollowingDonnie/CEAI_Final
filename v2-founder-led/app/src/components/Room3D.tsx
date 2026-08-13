@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Box, Eye, Maximize2 } from "lucide-react";
+import { Box, Dumbbell, Eye, Maximize2 } from "lucide-react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { Placement, PlanState, Variant } from "../../shared/types";
 import { categoryColour, variantById } from "../utils";
+import { deriveVisualInventory, type VisualInventoryItem } from "../visual-inventory";
 
 interface Props {
   state: PlanState;
@@ -62,6 +63,12 @@ export function Room3D({ state, catalogue, selectedId, onSelect, onReturn2D }: P
       object.traverse((child) => { child.userData.variantId = variant.variantId; });
       scene.add(object); selectable.push(object);
     }
+    for (const item of deriveVisualInventory(state, catalogue)) {
+      const object = visualInventoryObject(item, selectedId === item.variant.variantId);
+      object.userData.variantId = item.variant.variantId;
+      object.traverse((child) => { child.userData.variantId = item.variant.variantId; });
+      scene.add(object); selectable.push(object);
+    }
 
     function frameRoom() {
       const distance = Math.max(roomW, roomL) * 1.3 + roomH;
@@ -90,9 +97,9 @@ export function Room3D({ state, catalogue, selectedId, onSelect, onReturn2D }: P
     const animate = () => { controls.update(); renderer.render(scene, camera); renderer.domElement.dataset.renderReady = "true"; frame = requestAnimationFrame(animate); };
     animate();
     return () => { cancelAnimationFrame(frame); observer.disconnect(); renderer.domElement.removeEventListener("click", click); controls.dispose(); renderer.dispose(); scene.traverse((object) => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); const materials = Array.isArray(object.material) ? object.material : [object.material]; materials.forEach((material) => material.dispose()); } }); host.replaceChildren(); };
-  }, [roomWidth, roomLength, roomHeight, state.placements, catalogue, selectedId, wallMode, onSelect]);
+  }, [roomWidth, roomLength, roomHeight, state.placements, state.selectedItems, catalogue, selectedId, wallMode, onSelect]);
 
-  if (!roomWidth || !roomLength || !roomHeight) return <div className="planner-empty"><Box size={38} /><h2>Room waiting for dimensions</h2></div>;
+  if (!roomWidth || !roomLength || !roomHeight) return <div className="planner-empty"><Dumbbell size={38} /><h2>Your training space starts here</h2><p>Add the room dimensions so Mara can begin arranging equipment.</p></div>;
   if (failure) return <div className="three-fallback" role="status"><Box size={40} /><p>{failure}</p><button className="primary-button" onClick={onReturn2D}>Return to 2D</button></div>;
   return <div className="three-shell">
     <div className="canvas-toolbar three-toolbar"><button className="icon-button" title="Reset view" aria-label="Reset 3D view" onClick={() => resetRef.current?.()}><Maximize2 size={18} /></button><button className="quiet-button" title="Cycle walls" onClick={() => setWallMode((mode) => mode === "front_hidden" ? "half" : mode === "half" ? "all" : "front_hidden")}><Eye size={17} />Walls: {wallMode.replace("_", " ")}</button><span className="read-only-label">Read-only placement view</span></div>
@@ -147,5 +154,87 @@ function equipmentObject(variant: Variant, placement: Placement, selected: boole
     const body = box(width, Math.max(.04, Math.min(height, .3)), depth, colour); body.position.set(width / 2, Math.max(.02, Math.min(height, .3) / 2), depth / 2); group.add(body);
   }
   group.position.set(placement.xMm / 1000, 0, placement.zMm / 1000);
+  return group;
+}
+
+function visualInventoryObject(item: VisualInventoryItem, selected: boolean) {
+  const group = new THREE.Group();
+  const colour = selected ? "#de674b" : categoryColour[item.variant.category];
+  const x = item.xMm / 1000;
+  const z = item.zMm / 1000;
+
+  if (item.mode === "flooring") {
+    const width = item.variant.geometry.widthMm / 1000;
+    const depth = item.variant.geometry.lengthMm / 1000;
+    const mat = box(width, .025, depth, selected ? "#de674b" : "#343d3e");
+    mat.position.set(width / 2, .013, depth / 2); group.add(mat);
+    const seamMaterial = new THREE.LineBasicMaterial({ color: 0x66716f });
+    for (let offset = .5; offset < width; offset += .5) {
+      const geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(offset, .027, 0), new THREE.Vector3(offset, .027, depth)]);
+      group.add(new THREE.Line(geometry, seamMaterial));
+    }
+    group.position.set(x, 0, z);
+    return group;
+  }
+
+  if (item.mode === "racked_barbell" || item.mode === "loose_barbell") {
+    const length = item.variant.geometry.widthMm / 1000;
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(.022, .022, length, 20), new THREE.MeshStandardMaterial({ color: colour, roughness: .3, metalness: .85 }));
+    const racked = item.mode === "racked_barbell";
+    if (item.rotationDeg === 0) bar.rotation.z = Math.PI / 2; else bar.rotation.x = Math.PI / 2;
+    group.add(bar);
+    for (const side of [-1, 1]) {
+      const collar = new THREE.Mesh(new THREE.CylinderGeometry(.055, .055, .045, 20), new THREE.MeshStandardMaterial({ color: "#1b2427", roughness: .48, metalness: .5 }));
+      if (item.rotationDeg === 0) { collar.rotation.z = Math.PI / 2; collar.position.x = side * length * .39; }
+      else { collar.rotation.x = Math.PI / 2; collar.position.z = side * length * .39; }
+      group.add(collar);
+    }
+    group.position.set(x + (item.rotationDeg === 0 ? length / 2 : 0), racked ? 1.24 : .09, z + (item.rotationDeg === 90 ? length / 2 : 0));
+    return group;
+  }
+
+  if (item.mode === "stacked_plates") {
+    for (let index = 0; index < 5; index += 1) {
+      const plate = new THREE.Mesh(new THREE.CylinderGeometry(.22 - index * .012, .22 - index * .012, .045, 28), new THREE.MeshStandardMaterial({ color: index % 2 ? "#30393b" : colour, roughness: .72 }));
+      plate.position.y = .024 + index * .048; group.add(plate);
+    }
+    group.position.set(x + .24, 0, z + .24);
+    return group;
+  }
+
+  if (item.mode === "stored_plates") {
+    const peg = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, .62, 16), new THREE.MeshStandardMaterial({ color: "#283133", metalness: .7, roughness: .35 }));
+    peg.rotation.z = Math.PI / 2; peg.position.y = .55; group.add(peg);
+    for (let index = 0; index < 5; index += 1) {
+      const plate = new THREE.Mesh(new THREE.CylinderGeometry(.20, .20, .038, 28), new THREE.MeshStandardMaterial({ color: index % 2 ? "#30393b" : colour, roughness: .7 }));
+      plate.rotation.z = Math.PI / 2; plate.position.set(-.16 + index * .042, .55, 0); group.add(plate);
+    }
+    group.position.set(x, 0, z);
+    return group;
+  }
+
+  if (item.mode === "mounted_attachment") {
+    if (item.variant.variantId === "a18-plate-storage") {
+      for (const side of [-1, 1]) { const peg = box(.42, .045, .045, colour, .7); peg.position.set(side * .34, .54, 0); group.add(peg); }
+    } else if (item.variant.variantId === "a12-spotter-arms") {
+      for (const side of [-1, 1]) { const arm = box(.07, .09, .62, colour, .65); arm.position.set(side * .42, .82, .28); group.add(arm); }
+    } else if (item.variant.variantId === "a10-dip-attachment") {
+      for (const side of [-1, 1]) { const handle = box(.04, .04, .52, colour, .7); handle.position.set(side * .24, 1.15, .3); group.add(handle); }
+    } else {
+      const body = box(.32, .12, .38, colour, .55); body.position.set(0, .75, .18); group.add(body);
+    }
+    group.position.set(x + .65, 0, z + .22);
+    if (item.rotationDeg === 90) group.rotation.y = Math.PI / 2;
+    return group;
+  }
+
+  if (item.mode === "stored_bands") {
+    const band = new THREE.Mesh(new THREE.TorusGeometry(.18, .012, 10, 36), new THREE.MeshStandardMaterial({ color: colour, roughness: .65 }));
+    band.rotation.y = Math.PI / 2; band.position.set(.04, 1.25, .12); group.add(band);
+    group.position.set(x, 0, z); return group;
+  }
+
+  const body = box(Math.min(.42, item.variant.geometry.widthMm / 1000), Math.min(.18, item.variant.geometry.heightMm / 1000), Math.min(.42, item.variant.geometry.lengthMm / 1000), colour);
+  body.position.y = Math.min(.09, item.variant.geometry.heightMm / 2000); group.add(body); group.position.set(x, 0, z);
   return group;
 }

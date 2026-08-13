@@ -1,4 +1,4 @@
-import type { ChatMessage, PlanState, RequirementPatch, Variant } from "../shared/types";
+import type { ChatMessage, PlanAlternative, PlanState, RequirementPatch, Variant } from "../shared/types";
 
 export class ApiError extends Error {
   constructor(public status: number, public body: Record<string, unknown>) {
@@ -21,7 +21,10 @@ export const api = {
   patchRequirements: (planId: string, expectedVersion: number, patches: RequirementPatch[]) => request<{ state: PlanState }>(`/api/plans/${planId}/requirements`, { method: "PATCH", body: JSON.stringify({ expectedVersion, patches }) }),
   chat: (planId: string, expectedVersion: number, message: string) => request<{ state: PlanState; message: ChatMessage; service: string }>(`/api/plans/${planId}/chat`, { method: "POST", body: JSON.stringify({ expectedVersion, message }) }),
   recommend: (planId: string, expectedVersion: number) => request<{ state: PlanState }>(`/api/plans/${planId}/recommend`, { method: "POST", body: JSON.stringify({ expectedVersion }) }),
+  getAlternatives: (planId: string) => request<{ alternatives: PlanAlternative[] }>(`/api/plans/${planId}/alternatives`),
+  applyAlternative: (planId: string, alternativeId: PlanAlternative["id"], expectedVersion: number) => request<{ state: PlanState }>(`/api/plans/${planId}/alternatives/${alternativeId}`, { method: "POST", body: JSON.stringify({ expectedVersion }) }),
   addExisting: (planId: string, expectedVersion: number, equipment: Record<string, unknown>) => request<{ state: PlanState }>(`/api/plans/${planId}/existing-equipment`, { method: "POST", body: JSON.stringify({ expectedVersion, equipment }) }),
+  swapProduct: (planId: string, variantId: string, expectedVersion: number) => request<{ state: PlanState; product: Variant }>(`/api/plans/${planId}/items/${variantId}/swap`, { method: "POST", body: JSON.stringify({ expectedVersion }) }),
   addRecommendedItem: (planId: string, expectedVersion: number, query: string) => request<{ state: PlanState; product: Variant; alreadySelected: boolean }>(`/api/plans/${planId}/items/recommended`, { method: "POST", body: JSON.stringify({ expectedVersion, query }) }),
   addDoor: (planId: string, expectedVersion: number, door: Record<string, unknown>) => request<{ state: PlanState }>(`/api/plans/${planId}/doors`, { method: "POST", body: JSON.stringify({ expectedVersion, door }) }),
   updatePlacement: (planId: string, placementId: string, expectedVersion: number, update: Record<string, unknown>) => request<{ state: PlanState }>(`/api/plans/${planId}/placements/${placementId}`, { method: "POST", body: JSON.stringify({ expectedVersion, ...update }) }),

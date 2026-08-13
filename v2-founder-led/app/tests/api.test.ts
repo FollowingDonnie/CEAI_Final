@@ -1,3 +1,6 @@
+
+
+
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import type { Express } from "express";
@@ -160,5 +163,45 @@ describe("Northstar API", () => {
     expect(rebuilt.body.state.status).toBe("current");
     expect(rebuilt.body.state.quote.withinBudget).toBe(false);
     expect(rebuilt.body.state.budgetConsent).toMatchObject({ overrunAllowed: true, maximumAuthorisedOverrunCents: blocked.quote.overrunCents });
+  });
+
+  it("returns three checked plan strategies and applies one atomically", async () => {
+    const { app } = createApp({ apiKey: undefined });
+    const state = await createReadyPlan(app, 500000);
+    const options = await request(app).get(`/api/plans/${state.planId}/alternatives`).expect(200);
+    expect(options.body.alternatives.map((item: { id: string }) => item.id)).toEqual(["best_overall", "best_value", "most_open_floor"]);
+    expect(options.body.alternatives.every((item: { totalCents: number }) => item.totalCents <= 500000)).toBe(true);
+    const applied = await request(app).post(`/api/plans/${state.planId}/alternatives/best_value`).send({ expectedVersion: state.eventVersion }).expect(200);
+    expect(applied.body.state.status).toBe("current");
+    expect(applied.body.state.eventVersion).toBe(state.eventVersion + 1);
+    expect(applied.body.state.quote.withinBudget).toBe(true);
+  });
+
+  it("swaps an item only after the replacement passes room and budget checks", async () => {
+    const { app } = createApp({ apiKey: undefined });
+    const state = await createReadyPlan(app, 500000);
+    const platesId = state.selectedItems.find((id: string) => id.includes("plate-pack"));
+    expect(platesId).toBeTruthy();
+    const swapped = await request(app).post(`/api/plans/${state.planId}/items/${platesId}/swap`).send({ expectedVersion: state.eventVersion }).expect(200);
+    expect(swapped.body.product.category).toBe("plates");
+    expect(swapped.body.product.variantId).not.toBe(platesId);
+    expect(swapped.body.state.quote.withinBudget).toBe(true);
+    expect(swapped.body.state.placements.every((item: { validationStatus: string }) => item.validationStatus === "valid")).toBe(true);
+  });
+
+  it("does not choose an unapproved rack attachment when plate storage is requested", async () => {
+    const { app } = createApp({ apiKey: undefined });
+    const state = await createReadyPlan(app, 500000);
+    const response = await request(app).post(`/api/plans/${state.planId}/items/recommended`).send({
+      expectedVersion: state.eventVersion,
+      query: "plate storage",
+    });
+    if (response.status === 200) {
+      expect(response.body.product.category).toBe("storage");
+      expect(response.body.product.variantId).not.toBe("a18-plate-storage");
+    } else {
+      expect([409, 422]).toContain(response.status);
+      expect(response.body.state.eventVersion).toBe(state.eventVersion);
+    }
   });
 });

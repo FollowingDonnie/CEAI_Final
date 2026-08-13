@@ -35,7 +35,7 @@ export function ChatPane({ state, catalogue, messages, busy, thinkingLabel, onSe
     <section className="chat-pane" aria-label="Conversation with Mara">
       <header className="pane-header mara-header">
         <span className="mara-avatar" aria-hidden="true">MQ</span>
-        <span><strong>Mara Quinn</strong><small>Northstar equipment planner</small></span>
+        <span><strong>Mara Quinn</strong><small>Home gym equipment specialist</small></span>
       </header>
       <div className="messages" aria-live="polite" ref={messagesRef}>
         {messages.map((message) => (
@@ -96,6 +96,14 @@ function quickChoices(state: PlanState, catalogue: Variant[]): QuickChoice[] {
     { label: "Experienced", message: "I am experienced with gym equipment." },
   ];
   if (blocker !== "budgetCents") return [];
+  if (!blocker && state.status === "current") {
+    const hasPlates = state.selectedItems.some((id) => catalogue.find((item) => item.variantId === id)?.category === "plates");
+    const hasStorage = state.selectedItems.some((id) => {
+      const item = catalogue.find((candidate) => candidate.variantId === id);
+      return item?.category === "storage" || id === "a18-plate-storage";
+    });
+    if (hasPlates && !hasStorage) return [{ label: "Add plate storage", message: "Add the best suitable plate storage option to this plan." }];
+  }
 
   const categories = ["rack", "bench", "barbell", "plates"] as const;
   const packageAt = (position: number) => categories.reduce((total, category) => {

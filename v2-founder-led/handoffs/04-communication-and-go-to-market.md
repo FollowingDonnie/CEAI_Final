@@ -160,6 +160,7 @@ workflow interest, not conversion or return reduction.
 - The product does not certify structural suitability, installation or exercise
   safety.
 - The launch catalogue cannot support universal third-party compatibility.
+- Future work may explore importing equipment from a retailer URL, specification sheet or photo; any imported item must remain clearly unverified until its identity, dimensions and compatibility evidence are governed.
 - Local automated checks do not replace customer usability or a formal
   accessibility audit.
 

@@ -8,6 +8,7 @@ import { z } from "zod";
 import type { Door, ExistingEquipment, Placement, RequirementPatch } from "../shared/types.js";
 import { CatalogueRepository } from "./catalogue/repository.js";
 import { MaraOrchestrator } from "./conversation/orchestrator.js";
+import { applyPlanAlternative, buildPlanAlternatives, swapCheckedProduct } from "./domain/alternatives.js";
 import { checkCompatibility } from "./domain/compatibility.js";
 import { validatePlacements } from "./domain/geometry.js";
 import { generateLayout } from "./domain/layout.js";
@@ -142,6 +143,34 @@ export function createApp(options: AppOptions = {}) {
     } catch (error) { conflictOrThrow(error, res); }
   });
 
+  app.get("/api/plans/:planId/alternatives", async (req, res) => {
+    const snapshot = await catalogue.refresh();
+    res.json({ alternatives: buildPlanAlternatives(plans.get(req.params.planId), snapshot) });
+  });
+
+  app.post("/api/plans/:planId/alternatives/:alternativeId", async (req, res) => {
+    const body = z.object({ expectedVersion: z.number().int().nonnegative() }).parse(req.body);
+    const alternativeId = z.enum(["best_overall", "best_value", "most_open_floor"]).parse(req.params.alternativeId);
+    const current = plans.get(req.params.planId);
+    if (current.eventVersion !== body.expectedVersion) return res.status(409).json({ code: "STATE_CONFLICT", message: "Your plan changed while that option was being checked.", state: current });
+    const snapshot = await catalogue.refresh();
+    const alternative = applyPlanAlternative(current, snapshot, alternativeId);
+    if (!alternative) return res.status(422).json({ code: "ALTERNATIVE_UNAVAILABLE", message: "That option no longer passes the current room, catalogue and budget checks.", state: current });
+    const state = plans.replace(req.params.planId, alternative, body.expectedVersion);
+    res.json({ state });
+  });
+
+
+  app.post("/api/plans/:planId/items/:variantId/swap", async (req, res) => {
+    const body = z.object({ expectedVersion: z.number().int().nonnegative() }).parse(req.body);
+    const current = plans.get(req.params.planId);
+    if (current.eventVersion !== body.expectedVersion) return res.status(409).json({ code: "STATE_CONFLICT", message: "Your plan changed while that replacement was being checked.", state: current });
+    const snapshot = await catalogue.refresh();
+    const result = swapCheckedProduct(current, snapshot, req.params.variantId);
+    if (!result) return res.status(422).json({ code: "NO_CHECKED_SWAP", message: "No other current option in this category passes the room and budget checks.", state: current });
+    const state = plans.replace(req.params.planId, result.state, body.expectedVersion);
+    res.json({ state, product: result.product });
+  });
 
   app.post("/api/plans/:planId/items/recommended", async (req, res) => {
     const body = z.object({ expectedVersion: z.number().int().nonnegative(), query: z.string().trim().min(2).max(200) }).parse(req.body);

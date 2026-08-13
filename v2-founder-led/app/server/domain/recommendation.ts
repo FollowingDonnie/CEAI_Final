@@ -1,4 +1,4 @@
-import type { CatalogueSnapshot, PlanState, Variant } from "../../shared/types.js";
+import type { CatalogueSnapshot, ExistingEquipment, PlanState, Variant } from "../../shared/types.js";
 import { checkCompatibility } from "./compatibility.js";
 import { generateLayout } from "./layout.js";
 import { calculateQuote } from "./quote.js";
@@ -165,7 +165,23 @@ export type ProductAdditionResult =
   };
 
 export function addBestMatchingProduct(state: PlanState, snapshot: CatalogueSnapshot, query: string): ProductAdditionResult {
-  const candidates = searchCatalogue(snapshot, { text: query }).slice(0, 8);
+  const normalisedQuery = query.toLowerCase();
+  const requestedCategory: Variant["category"] | null = /\b(storage|store|organis(?:e|er|ing)|plate tree)\b/.test(normalisedQuery)
+    ? "storage"
+    : /\b(rower|rowing machine|bike|bicycle|stepper|cardio machine)\b/.test(normalisedQuery)
+      ? "cardio"
+      : null;
+  const existingHost = state.existingEquipment.find((item) => item.identityKind === "northstar");
+  const rackVariantId = state.selectedItems.find((id) => snapshot.variants.find((item) => item.variantId === id)?.category === "rack")
+    ?? (existingHost?.identityKind === "northstar" ? existingHost.variantId : undefined);
+  const host: ExistingEquipment | null = rackVariantId
+    ? { id: `host-${rackVariantId}`, identityKind: "northstar", variantId: rackVariantId, evidenceStatus: "verified" }
+    : null;
+  const candidates = searchCatalogue(snapshot, { text: query }).slice(0, 12).filter((product) => {
+    if (requestedCategory && product.category !== requestedCategory) return false;
+    if (product.category !== "attachment") return true;
+    return host ? checkCompatibility(snapshot, host, product.variantId, state.selectedItems).allowedInPlan : false;
+  }).slice(0, 8);
   if (!candidates.length) {
     return { ok: false, code: "PRODUCT_NOT_FOUND", product: null, projectedTotalCents: null, overrunCents: null, alternatives: [] };
   }

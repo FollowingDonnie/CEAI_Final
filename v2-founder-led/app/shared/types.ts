@@ -267,6 +267,16 @@ export interface Recommendation {
   catalogueSnapshotId: string;
 }
 
+export interface PlanAlternative {
+  id: "best_overall" | "best_value" | "most_open_floor";
+  label: string;
+  description: string;
+  itemIds: string[];
+  totalCents: number;
+  openFloorScore: number;
+  qualityScore: number;
+}
+
 export interface PlanState {
   planId: string;
   journeyType: RequirementField<"new_space" | "upgrade">;

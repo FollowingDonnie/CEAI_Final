@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Group, Layer, Line, Rect, Stage, Text } from "react-konva";
+import { Circle, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
 import { Eye, EyeOff, Grid3X3, Lock, Maximize2, Minus, Move, Redo2, RotateCw, Undo2, Unlock, ZoomIn, ZoomOut } from "lucide-react";
 import type { Placement, PlanState, Variant } from "../../shared/types";
 import { ApiError } from "../api";
 import { categoryColour, variantById } from "../utils";
+import { deriveVisualInventory, type VisualInventoryItem } from "../visual-inventory";
 
 interface Props {
   state: PlanState;
@@ -60,6 +61,7 @@ export function Planner2D({ state, catalogue, selectedId, onSelect, onPlacement,
   const selectedPlacement = state.placements.find((placement) => placement.variantId === selectedId);
   const selectedVariant = selectedPlacement ? variantById(catalogue, selectedPlacement.variantId) : undefined;
   const violations = useMemo(() => state.placements.flatMap((placement) => placement.violations), [state.placements]);
+  const visualInventory = useMemo(() => deriveVisualInventory(state, catalogue), [state.selectedItems, state.placements, state.requirements.room.lengthMm.value, state.requirements.room.widthMm.value, catalogue]);
 
   const submitPlacement = async (placement: Placement, update: Record<string, unknown>) => {
     try { setInvalidAttempt(null); await onPlacement(placement.placementId, update); }
@@ -88,6 +90,7 @@ export function Planner2D({ state, catalogue, selectedId, onSelect, onPlacement,
       <Stage width={size.width} height={size.height} onMouseDown={(event) => { if (event.target === event.target.getStage()) onSelect(null); }}>
         <Layer>
           <Rect x={origin.x} y={origin.y} width={roomPixelWidth} height={roomPixelLength} fill="#f7f9f8" stroke="#526064" strokeWidth={2} />
+          {visualInventory.filter((item) => item.mode === "flooring").map((item) => <VisualInventoryShape key={item.variant.variantId} item={item} origin={origin} scale={scale} selected={selectedId === item.variant.variantId} onSelect={onSelect} />)}
           {layers.grid && <Grid origin={origin} widthMm={roomWidth} lengthMm={roomLength} scale={scale} />}
           {state.requirements.doors.map((door) => <DoorShape key={door.doorId} door={door} origin={origin} roomWidth={roomWidth} roomLength={roomLength} scale={scale} />)}
           {state.placements.map((placement, index) => {
@@ -112,6 +115,7 @@ export function Planner2D({ state, catalogue, selectedId, onSelect, onPlacement,
               </Group>
             </Group>;
           })}
+          {visualInventory.filter((item) => item.mode !== "flooring").map((item) => <VisualInventoryShape key={item.variant.variantId} item={item} origin={origin} scale={scale} selected={selectedId === item.variant.variantId} onSelect={onSelect} />)}
           {invalidAttempt && (() => {
             const variant = variantById(catalogue, invalidAttempt.variantId); if (!variant) return null; const footprint = dimensions(variant, invalidAttempt)!;
             return <Rect x={origin.x + invalidAttempt.xMm * scale} y={origin.y + invalidAttempt.zMm * scale} width={footprint.width * scale} height={footprint.length * scale} stroke="#b42318" fill="rgba(180,35,24,.2)" dash={[5, 4]} strokeWidth={3} />;
@@ -141,6 +145,31 @@ function DoorShape({ door, origin, roomWidth, roomLength, scale }: { door: PlanS
 function RackTop({ width, height }: { width: number; height: number }) { return <><Rect x={3} y={3} width={6} height={Math.max(8, height - 6)} fill="#ffffff" opacity={0.8} /><Rect x={Math.max(3, width - 9)} y={3} width={6} height={Math.max(8, height - 6)} fill="#ffffff" opacity={0.8} /><Line points={[6, 6, width - 6, 6]} stroke="#ffffff" strokeWidth={2} /></>; }
 function BenchTop({ width, height }: { width: number; height: number }) { return <Rect x={width * .2} y={height * .08} width={width * .6} height={height * .84} fill="#ffffff" opacity={0.34} cornerRadius={3} />; }
 function CardioTop({ width, height }: { width: number; height: number }) { return <><Line points={[width / 2, 8, width / 2, height - 8]} stroke="#ffffff" strokeWidth={4} /><Rect x={width * .2} y={height * .6} width={width * .6} height={Math.min(20, height * .18)} fill="#ffffff" opacity={0.35} /></>; }
+
+function VisualInventoryShape({ item, origin, scale, selected, onSelect }: { item: VisualInventoryItem; origin: { x: number; y: number }; scale: number; selected: boolean; onSelect: (id: string) => void }) {
+  const x = origin.x + item.xMm * scale;
+  const y = origin.y + item.zMm * scale;
+  const colour = selected ? "#de674b" : categoryColour[item.variant.category];
+  const choose = () => onSelect(item.variant.variantId);
+  if (item.mode === "flooring") {
+    return <Group onClick={choose} onTap={choose}><Rect x={x} y={y} width={item.variant.geometry.widthMm * scale} height={item.variant.geometry.lengthMm * scale} fill="#343d3e" opacity={selected ? .42 : .28} stroke={colour} strokeWidth={selected ? 3 : 1} dash={[8, 4]} /><Text x={x + 8} y={y + 8} text="LIFTING FLOOR" fontSize={10} fontStyle="bold" fill="#ffffff" opacity={.88} /></Group>;
+  }
+  if (item.mode === "racked_barbell" || item.mode === "loose_barbell") {
+    const length = item.variant.geometry.widthMm * scale;
+    const points = item.rotationDeg === 0 ? [x, y, x + length, y] : [x, y, x, y + length];
+    return <Group onClick={choose} onTap={choose}><Line points={points} stroke={colour} strokeWidth={selected ? 7 : 5} lineCap="round" /><Circle x={points[0]} y={points[1]} radius={5} fill="#1b2427" /><Circle x={points[2]} y={points[3]} radius={5} fill="#1b2427" /></Group>;
+  }
+  if (item.mode === "stacked_plates" || item.mode === "stored_plates") {
+    return <Group x={x} y={y} onClick={choose} onTap={choose}>{[18, 14, 10].map((radius, index) => <Circle key={radius} x={index * 7} y={index * 3} radius={radius} fill={index === 1 ? "#30393b" : colour} stroke="#ffffff" strokeWidth={1} />)}<Text text={item.mode === "stored_plates" ? "STORED" : "PLATES"} x={-24} y={24} width={72} align="center" fontSize={9} fontStyle="bold" fill="#1b2427" /></Group>;
+  }
+  if (item.mode === "mounted_attachment") {
+    return <Group x={x + 100 * scale} y={y + 180 * scale} onClick={choose} onTap={choose}><Rect width={Math.max(12, 240 * scale)} height={Math.max(9, 100 * scale)} fill={colour} stroke={selected ? "#de674b" : "#ffffff"} strokeWidth={selected ? 3 : 1} cornerRadius={2} /><Text text="ATT" x={2} y={2} fontSize={8} fontStyle="bold" fill="#ffffff" /></Group>;
+  }
+  if (item.mode === "stored_bands") {
+    return <Group x={x + 40 * scale} y={y + 120 * scale} onClick={choose} onTap={choose}><Circle radius={Math.max(7, 110 * scale)} stroke={colour} strokeWidth={selected ? 5 : 3} /><Text text="BANDS" x={-24} y={12} width={48} align="center" fontSize={8} fill="#1b2427" /></Group>;
+  }
+  return <Group x={x} y={y} onClick={choose} onTap={choose}><Rect width={Math.max(20, Math.min(420, item.variant.geometry.widthMm) * scale)} height={Math.max(16, Math.min(420, item.variant.geometry.lengthMm) * scale)} fill={colour} stroke={selected ? "#de674b" : "#ffffff"} strokeWidth={selected ? 3 : 1} /><Text text="ACCESSORY" x={3} y={3} fontSize={8} fill="#ffffff" /></Group>;
+}
 
 function PlacementControls({ placement, variant, onChange, onRemove }: { placement: Placement; variant: Variant; onChange: (update: Record<string, unknown>) => Promise<void>; onRemove: () => Promise<void> }) {
   return <div className="placement-controls"><div><strong>{variant.name}</strong><small>{placement.validationStatus.replaceAll("_", " ")}</small></div><label>West<input type="number" value={placement.xMm} step={10} onChange={(event) => onChange({ xMm: Number(event.target.value) })} /><span>mm</span></label><label>North<input type="number" value={placement.zMm} step={10} onChange={(event) => onChange({ zMm: Number(event.target.value) })} /><span>mm</span></label><button className="icon-button" title="Nudge west" aria-label="Nudge west" onClick={() => onChange({ xMm: placement.xMm - 50 })}><Minus size={17} /></button><button className="icon-button" title="Rotate 90 degrees" aria-label="Rotate 90 degrees" onClick={() => onChange({ rotationDeg: (placement.rotationDeg + 90) % 360 })}><RotateCw size={17} /></button><button className="icon-button" title={placement.locked ? "Unlock" : "Lock"} aria-label={placement.locked ? "Unlock placement" : "Lock placement"} onClick={() => onChange({ locked: !placement.locked })}>{placement.locked ? <Unlock size={17} /> : <Lock size={17} />}</button><button className="text-button danger" onClick={onRemove}>Remove</button></div>;
