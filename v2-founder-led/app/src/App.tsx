@@ -104,6 +104,36 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
     catch (value) { handleApiError(value); throw value; }
   };
 
+  const addRefinement = async (query: string, userMessage: string) => {
+    const current = stateRef.current;
+    if (!current) return;
+    const user: ChatMessage = { id: crypto.randomUUID(), role: "user", text: userMessage, createdAt: new Date().toISOString() };
+    setMessages((existing) => [...existing, user]);
+    setBusy(true); setActivity("build"); setError(null);
+    try {
+      const result = await api.addRecommendedItem(current.planId, current.eventVersion, query);
+      stateRef.current = result.state; setState(result.state); setSelectedId(result.product.variantId); setRoomView("3d");
+      const total = result.state.quote.grandTotalCents == null ? "The quote is being refreshed." : `The complete known total is now EUR ${(result.state.quote.grandTotalCents / 100).toLocaleString("en-IE")}.`;
+      const text = result.alreadySelected ? `${result.product.name} is already included in your plan.` : `I've added ${result.product.name} and updated the room view and quote. ${total}`;
+      setMessages((existing) => [...existing, { id: crypto.randomUUID(), role: "assistant", text, createdAt: new Date().toISOString() }]);
+      setNotice(`${result.product.name} checked and added.`);
+    } catch (value) {
+      if (value instanceof ApiError && ["PRODUCT_NOT_FOUND", "ITEM_DOES_NOT_FIT", "BUDGET_EXCEEDED"].includes(String(value.body.code))) {
+        const projected = typeof value.body.projectedTotalCents === "number" ? ` The projected total would be EUR ${(value.body.projectedTotalCents / 100).toLocaleString("en-IE")}.` : "";
+        const text = value.body.code === "BUDGET_EXCEEDED"
+          ? `That addition would exceed your current budget, so I have left the checked plan unchanged.${projected}`
+          : "I couldn't find an option that passes the current catalogue, compatibility and room checks, so I have left the plan unchanged.";
+        setMessages((existing) => [...existing, { id: crypto.randomUUID(), role: "assistant", text, createdAt: new Date().toISOString() }]);
+      } else {
+        handleApiError(value);
+      }
+    } finally { setBusy(false); setActivity(null); }
+  };
+
+  const skipRefinement = (message: string) => {
+    setMessages((current) => [...current, { id: crypto.randomUUID(), role: "user", text: message, createdAt: new Date().toISOString() }]);
+  };
+
   const refreshCatalogue = async () => {
     setBusy(true); setActivity("catalogue"); setError(null);
     try { const refreshed = await api.refreshCatalogue(); const items = await api.getCatalogue(); setCatalogue(items.variants); setState((current) => current ? { ...current, catalogueSnapshotId: refreshed.snapshotId, sourceStatus: { ...current.sourceStatus, catalogueFreshness: refreshed.freshness as PlanState["sourceStatus"]["catalogueFreshness"], observedAt: refreshed.observedAt } } : current); setNotice(`Current catalogue checked ${checkedTime(refreshed.observedAt)}.`); }
@@ -169,12 +199,12 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
       <div className="top-menu"><button className="icon-button" aria-label="Plan menu" title="Plan menu"><ChevronDown size={18} /></button><button className="menu-popover" onClick={() => window.confirm("Start a new anonymous plan?") && initialise()}><RotateCcw size={16} />Start over</button></div>
     </header>
 
-    <div className="summary-rail"><span>{metres(state.requirements.room.lengthMm.value)} × {metres(state.requirements.room.widthMm.value)} × {metres(state.requirements.room.heightMm.value)}</span><span>{state.selectedItems.length} item{state.selectedItems.length === 1 ? "" : "s"}</span><span>{state.quote.grandTotalCents == null ? "Quote pending" : `EUR ${(state.quote.grandTotalCents / 100).toLocaleString("en-IE")}`}</span><span className={state.status}>{statusLabel[state.status]}</span></div>
+    <div className="summary-rail"><span>{metres(state.requirements.room.lengthMm.value)} x {metres(state.requirements.room.widthMm.value)} x {metres(state.requirements.room.heightMm.value)}</span><span>{state.selectedItems.length} item{state.selectedItems.length === 1 ? "" : "s"}</span><span>{state.quote.grandTotalCents == null ? "Quote pending" : `EUR ${(state.quote.grandTotalCents / 100).toLocaleString("en-IE")}`}</span><span className={state.status}>{statusLabel[state.status]}</span></div>
     {notice && <div className="sr-only" role="status" aria-live="polite">{notice}</div>}
     {error && <div className="global-error" role="alert">{error}<button onClick={() => setError(null)}>Dismiss</button></div>}
 
     <div className={`workspace mobile-${mobileTab}`}>
-      <ChatPane state={state} catalogue={catalogue} messages={messages} busy={busy} thinkingLabel={thinkingLabel} onSend={send} onBuild={recommend} />
+      <ChatPane state={state} catalogue={catalogue} messages={messages} busy={busy} thinkingLabel={thinkingLabel} onSend={send} onBuild={recommend} onAddRefinement={addRefinement} onSkipRefinement={skipRefinement} />
       <section className="room-workspace" aria-label="Room workspace">
         <header className="workspace-header"><div className="view-control" aria-label="Room view"><button className={roomView === "2d" ? "active" : ""} onClick={() => setRoomView("2d")}>2D plan</button><button className={roomView === "3d" ? "active" : ""} onClick={() => setRoomView("3d")}>3D room</button></div><button className="plan-drawer-button" onClick={() => setMobileTab("plan")}><PanelRight size={17} />Plan and quote</button></header>
         <div className="room-surface" role="region" aria-label="Interactive room plan" tabIndex={0}>
@@ -197,6 +227,6 @@ const Room3D = lazy(() => import("./components/Room3D").then((module) => ({ defa
       <button className={mobileTab === "room" ? "active" : ""} onClick={() => setMobileTab("room")}><Box size={20} />Room</button>
       <button className={mobileTab === "quote" ? "active" : ""} onClick={() => { setMobileTab("quote"); setInspectorTab("quote"); }}><Quote size={20} />Quote</button>
     </nav>
-    {busy && activity === "build" && <div className="operation-strip" role="status"><Sparkles size={16} />Comparing equipment · Arranging the room · Updating the quote</div>}
+    {busy && activity === "build" && <div className="operation-strip" role="status"><Sparkles size={16} />Comparing equipment | Arranging the room | Updating the quote</div>}
   </main>;
 }

@@ -59,6 +59,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .message.assistant svg { color: var(--teal); flex: 0 0 auto; margin-top: 3px; }
 .message.user { align-self: flex-end; background: var(--teal); color: #fff; padding: 10px 12px; }
 .message.system { align-self: center; color: var(--muted); font-size: 11px; border: 1px solid var(--line); padding: 5px 9px; background: #fff; }
+.refinement-step { display: grid; gap: 8px; align-self: stretch; }
+.refinement-message { align-self: flex-start; }
 .suggested-replies { display: grid; gap: 7px; align-self: flex-start; max-width: 100%; }
 .suggested-replies > small { color: var(--muted); font-size: 11px; line-height: 1.35; }
 .quick-choices { display: flex; flex-wrap: wrap; gap: 7px; align-self: flex-start; }

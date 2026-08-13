@@ -13,3 +13,4 @@ rel-f20-storage,f20-folding-rack-compact,a18-plate-storage,incompatible,,[],"[""
 rel-s20-dip-adapter,s20-squat-stand-standard,a10-dip-attachment,compatible_with_condition,a30-interface-adapter,"[""Use the A30 governed interface adapter""]",[],"[""evidence-rel-s20-dip-adapter""]",2026-08-11T12:00:00.000Z,compat-2026-08,TRUE
 rel-h30-jammer-depth,h30-half-rack-entry,a24-jammer-arms,incompatible,,[],"[""DEPTH_INSUFFICIENT""]","[""evidence-rel-h30-jammer-depth""]",2026-08-11T12:00:00.000Z,compat-2026-08,TRUE
 rel-p40-pullup,p40-power-rack-compact,a26-pullup-multi,explicitly_compatible,,[],[],"[""evidence-rel-p40-pullup""]",2026-08-11T12:00:00.000Z,compat-2026-08,TRUE
+rel-h30-spotter,h30-half-rack-entry,a12-spotter-arms,explicitly_compatible,,[],[],"[""evidence-rel-h30-spotter""]",2026-08-13T12:00:00.000Z,compat-2026-08,TRUE

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { AlertTriangle, CheckCircle2, ChevronRight, CircleDashed, Download, LockKeyhole, Mail, PackageCheck, Share2 } from "lucide-react";
 import type { PlanAlternative, PlanState, Variant } from "../../shared/types";
@@ -71,7 +70,7 @@ export function PlanSummary({ state, catalogue, alternatives, selectedId, busy, 
       const item = variantById(catalogue, id); if (!item) return null;
       const placement = state.placements.find((value) => value.variantId === id);
       const owned = state.existingEquipment.some((value) => value.identityKind !== "manual" && value.variantId === id);
-      return <button type="button" className={`equipment-row ${selectedId === id ? "selected" : ""}`} key={id} onClick={() => onSelect(id)}><span className="category-swatch" style={{ background: categoryColour[item.category] }} aria-hidden="true" /><span><strong>{item.name}</strong><small>{item.sku} Â· {item.configuration}</small></span>{placement?.locked && <LockKeyhole size={14} aria-label="Locked in room" />}<span>{owned ? "Owned" : euro(item.priceCents)}</span><ChevronRight size={16} /></button>;
+      return <button type="button" className={`equipment-row ${selectedId === id ? "selected" : ""}`} key={id} onClick={() => onSelect(id)}><span className="category-swatch" style={{ background: categoryColour[item.category] }} aria-hidden="true" /><span><strong>{item.name}</strong><small>{item.sku} | {item.configuration}</small></span>{placement?.locked && <LockKeyhole size={14} aria-label="Locked in room" />}<span>{owned ? "Owned" : euro(item.priceCents)}</span><ChevronRight size={16} /></button>;
     })}</div>}
 
     {state.journeyType.value === "upgrade" && state.compatibilityResults.length > 0 && <div className="compatibility-list">

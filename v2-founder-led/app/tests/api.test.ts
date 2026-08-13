@@ -79,6 +79,18 @@ describe("Northstar API", () => {
     expect(response.body.state.eventVersion).toBe(state.eventVersion + 1);
   });
 
+  it("adds governed spotter arms instead of matching a rack description", async () => {
+    const { app } = createApp({ apiKey: undefined });
+    const state = await createReadyPlan(app, 500000);
+    const response = await request(app).post(`/api/plans/${state.planId}/items/recommended`).send({
+      expectedVersion: state.eventVersion,
+      query: "compatible spotter arms",
+    }).expect(200);
+    expect(response.body.product.variantId).toBe("a12-spotter-arms");
+    expect(response.body.product.category).toBe("attachment");
+    expect(response.body.state.selectedItems).toContain("a12-spotter-arms");
+  });
+
   it("does not mutate the plan when a requested product fails room or budget validation", async () => {
     const { app } = createApp({ apiKey: undefined });
     const state = await createReadyPlan(app, 225000);

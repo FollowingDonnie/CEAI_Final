@@ -39,3 +39,4 @@ evidence-f10-flooring-general,source-northstar-prototype,variant,f10-flooring-ge
 evidence-f20-flooring-impact,source-northstar-prototype,variant,f20-flooring-impact,customer_critical_specification,assumption,medium,Northstar research-led prototype
 evidence-st10-storage-vertical,source-northstar-prototype,variant,st10-storage-vertical,customer_critical_specification,verified,high,Northstar research-led prototype
 evidence-st20-storage-horizontal,source-northstar-prototype,variant,st20-storage-horizontal,customer_critical_specification,verified,high,Northstar research-led prototype
+evidence-rel-h30-spotter,source-northstar-prototype,relationship,rel-h30-spotter,compatibility_approval,verified,high,Northstar research-led prototype

@@ -10,13 +10,16 @@ interface Props {
   onSend: (message: string) => Promise<void>;
   thinkingLabel: string | null;
   onBuild: () => Promise<void>;
+  onAddRefinement: (query: string, userMessage: string) => Promise<void>;
+  onSkipRefinement: (message: string) => void;
 }
 
-export function ChatPane({ state, catalogue, messages, busy, thinkingLabel, onSend, onBuild }: Props) {
+export function ChatPane({ state, catalogue, messages, busy, thinkingLabel, onSend, onBuild, onAddRefinement, onSkipRefinement }: Props) {
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const choices = quickChoices(state, catalogue);
+  const refinement = postBuildRefinement(state, catalogue, messages);
   const showFlexibleGoalsHint = state.blockers[0] === "goals";
   const canBuild = !state.blockers.length && ["empty", "stale"].includes(state.recommendation.status);
   useEffect(() => {
@@ -49,6 +52,18 @@ export function ChatPane({ state, catalogue, messages, busy, thinkingLabel, onSe
           <div className="chat-plan-action">
             <span>That is enough for a useful first option. You can refine it afterwards.</span>
             <button className="primary-button" type="button" onClick={onBuild}>{state.recommendation.status === "empty" ? "Build with current info" : "Update plan"}</button>
+          </div>
+        )}
+        {!busy && refinement && (
+          <div className="refinement-step">
+            <div className="message assistant refinement-message">
+              <Sparkles size={15} aria-hidden="true" />
+              <p>{refinement.prompt}</p>
+            </div>
+            <div className="quick-choices" aria-label="Optional plan refinement">
+              <button type="button" onClick={() => onAddRefinement(refinement.query, refinement.acceptMessage)}>{refinement.acceptLabel}</button>
+              <button type="button" onClick={() => onSkipRefinement(refinement.skipMessage)}>Not now</button>
+            </div>
           </div>
         )}
         {!busy && choices.length > 0 && (
@@ -103,14 +118,6 @@ function quickChoices(state: PlanState, catalogue: Variant[]): QuickChoice[] {
     { label: "Experienced", message: "I am experienced with gym equipment." },
   ];
   if (blocker !== "budgetCents") return [];
-  if (!blocker && state.status === "current") {
-    const hasPlates = state.selectedItems.some((id) => catalogue.find((item) => item.variantId === id)?.category === "plates");
-    const hasStorage = state.selectedItems.some((id) => {
-      const item = catalogue.find((candidate) => candidate.variantId === id);
-      return item?.category === "storage" || id === "a18-plate-storage";
-    });
-    if (hasPlates && !hasStorage) return [{ label: "Add plate storage", message: "Add the best suitable plate storage option to this plan." }];
-  }
 
   const categories = ["rack", "bench", "barbell", "plates"] as const;
   const packageAt = (position: number) => categories.reduce((total, category) => {
@@ -127,4 +134,48 @@ function quickChoices(state: PlanState, catalogue: Variant[]): QuickChoice[] {
     ...euro.map((value, index) => ({ label: names[index] + " - up to EUR " + value.toLocaleString("en-IE"), message: "My maximum budget is EUR " + value + "." })),
     { label: "Help me choose", message: "I am not sure about budget yet. Please help me choose a sensible range." },
   ];
+}
+
+
+
+interface RefinementStep {
+  prompt: string;
+  query: string;
+  acceptLabel: string;
+  acceptMessage: string;
+  skipMessage: string;
+}
+
+function postBuildRefinement(state: PlanState, catalogue: Variant[], messages: ChatMessage[]): RefinementStep | null {
+  if (state.status !== "current" || state.journeyType.value !== "new_space") return null;
+  const selected = state.selectedItems.map((id) => catalogue.find((item) => item.variantId === id)).filter((item): item is Variant => Boolean(item));
+  const userReplies = messages.filter((message) => message.role === "user").map((message) => message.text.toLowerCase());
+  const hasRack = selected.some((item) => item.category === "rack");
+  const hasBarbell = selected.some((item) => item.category === "barbell");
+  const hasPlates = selected.some((item) => item.category === "plates");
+  const hasSafetySupport = selected.some((item) => ["a12-spotter-arms", "a14-safety-straps"].includes(item.variantId));
+  const safetyHandled = hasSafetySupport || userReplies.some((text) => /(?:add|no|skip|not now).*spotter/.test(text));
+
+  if (hasRack && hasBarbell && !safetyHandled) {
+    return {
+      prompt: "Your core lifting setup is ready. The bar position shown on the rack is illustrative; the current catalogue does not list a separate J-hook product, so none has been added to the quote. Would you like me to check compatible spotter arms?",
+      query: "compatible spotter arms",
+      acceptLabel: "Add spotter arms",
+      acceptMessage: "Yes, add compatible spotter arms to the plan.",
+      skipMessage: "Not now for spotter arms.",
+    };
+  }
+
+  const hasStorage = selected.some((item) => item.category === "storage" || item.variantId === "a18-plate-storage" || item.tags.includes("storage"));
+  const storageHandled = hasStorage || userReplies.some((text) => /(?:add|no|skip).*plate storage|plates.*floor.*for now/.test(text));
+  if (hasPlates && !storageHandled) {
+    return {
+      prompt: "Your plates are currently shown as a neat floor stack. Would you like me to find a suitable plate-storage option and update the room and quote?",
+      query: "plate storage",
+      acceptLabel: "Add plate storage",
+      acceptMessage: "Yes, add the best suitable plate storage option to the plan.",
+      skipMessage: "Keep the plates on the floor for now.",
+    };
+  }
+  return null;
 }

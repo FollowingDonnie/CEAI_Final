@@ -177,6 +177,7 @@ export const seedCatalogue: CatalogueBundle = {
   variants,
   compatibility: [
     relation("rel-h30-dip", "h30-half-rack-entry", "a10-dip-attachment", "explicitly_compatible"),
+    relation("rel-h30-spotter", "h30-half-rack-entry", "a12-spotter-arms", "explicitly_compatible", { evidenceIds: ["evidence-rel-h30-spotter"] }),
     relation("rel-h40-dip", "h40-half-rack-pro", "a10-dip-attachment", "explicitly_compatible"),
     relation("rel-h30-cable", "h30-half-rack-entry", "a20-cable-compact", "compatible_with_condition", { adapterVariantId: "a28-stabiliser", conditions: ["Add the A28 rear stabiliser"] }),
     relation("rel-h40-cable", "h40-half-rack-pro", "a20-cable-compact", "explicitly_compatible"),

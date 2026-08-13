@@ -84,6 +84,24 @@ test("new-space journey produces a checked quote and synchronised nonblank views
   await page.screenshot({ path: resolve(evidenceDir, "desktop-3d-1440x900.png"), fullPage: true });
 });
 
+test("Mara refines a checked lifting plan one accessory at a time", async ({ page }) => {
+  await page.goto("/");
+  await fillReadyStrengthPlan(page, "new_space", "5000");
+  await expect(page.getByText(/does not list a separate J-hook product/)).toBeVisible();
+  await Promise.all([
+    page.waitForResponse((response) => response.request().method() === "POST" && response.url().includes("/items/recommended") && response.ok()),
+    page.getByRole("button", { name: "Add spotter arms" }).click(),
+  ]);
+  await expect(page.locator(".equipment-row").filter({ hasText: "Spotter Arms" })).toBeVisible();
+  await expect(page.getByText(/plates are currently shown as a neat floor stack/)).toBeVisible();
+  await Promise.all([
+    page.waitForResponse((response) => response.request().method() === "POST" && response.url().includes("/items/recommended") && response.ok()),
+    page.getByRole("button", { name: "Add plate storage" }).click(),
+  ]);
+  await expect(page.locator(".equipment-row").filter({ hasText: "Storage" })).toBeVisible();
+  await expect(page.getByText(/updated the room view and quote/).last()).toBeVisible();
+});
+
 test("upgrade journey shows governed compatibility and does not recharge owned equipment", async ({ page }) => {
   await page.goto("/");
   await fillReadyStrengthPlan(page, "upgrade");

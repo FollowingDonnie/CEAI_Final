@@ -170,7 +170,9 @@ export function addBestMatchingProduct(state: PlanState, snapshot: CatalogueSnap
     ? "storage"
     : /\b(rower|rowing machine|bike|bicycle|stepper|cardio machine)\b/.test(normalisedQuery)
       ? "cardio"
-      : null;
+      : /\b(spotter arms?|safety straps?|dip attachment|landmine attachment|cable attachment)\b/.test(normalisedQuery)
+        ? "attachment"
+        : null;
   const existingHost = state.existingEquipment.find((item) => item.identityKind === "northstar");
   const rackVariantId = state.selectedItems.find((id) => snapshot.variants.find((item) => item.variantId === id)?.category === "rack")
     ?? (existingHost?.identityKind === "northstar" ? existingHost.variantId : undefined);
